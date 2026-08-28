@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
+<title>MTU Campus</title>
+
+<!-- Fonts: Space Grotesk (display) + Inter (body/UI) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<!-- Tailwind CDN -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: {
+          display: ['"Space Grotesk"', 'sans-serif'],
+          sans: ['Inter', 'sans-serif'],
+        },
+        colors: {
+          base: {
+            950: '#07111F',
+            900: '#0B1728',
+            850: '#101D31',
+            800: '#14243A',
+            700: '#1C304A',
+            600: '#2A415E',
+            500: '#405A78',
+          },
+          emerald: {
+            DEFAULT: '#18B6D9',
+            soft: '#58D7EF',
+            dim: '#0E7890',
+          },
+          indigo: {
+            DEFAULT: '#6D5EF5',
+            soft: '#9A8FFF',
+            dim: '#4E42B8',
+          },
+        },
+        boxShadow: {
+          glow: '0 0 0 1px rgba(255,255,255,0.04), 0 20px 40px -12px rgba(0,0,0,0.55)',
+          'glow-em': '0 8px 24px -6px rgba(16,185,129,0.45)',
+          'glow-in': '0 8px 24px -6px rgba(99,102,241,0.45)',
+        },
+        borderRadius: {
+          '2xl': '1.1rem',
+          '3xl': '1.6rem',
+        },
+      },
+    },
+  }
+</script>
+
+<!-- Lucide Icons -->
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+
+<style>
+  :root { color-scheme: dark; }
+  html, body { overscroll-behavior-y: none; }
+  body {
+    font-family: 'Inter', sans-serif;
+    background:
+      radial-gradient(circle at 50% -8%, rgba(24,182,217,0.18), transparent 32%),
+      radial-gradient(circle at 95% 18%, rgba(109,94,245,0.13), transparent 27%),
+      linear-gradient(180deg, #07111F 0%, #081426 52%, #06101D 100%);
+    color: #F4F8FC;
+  }
+  .font-display { font-family: 'Space Grotesk', sans-serif; }
+
+  /* Ambient aurora glow behind hero elements */
+  .aurora {
+    position: absolute; inset: -40% -20% auto -20%; height: 340px;
+    background:
+      radial-gradient(closest-side, rgba(16,185,129,0.30), transparent 70%),
+      radial-gradient(closest-side, rgba(99,102,241,0.24), transparent 70%);
+    background-position: 20% 30%, 80% 20%;
+    background-repeat: no-repeat;
+    filter: blur(40px);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Glass surfaces */
+  .glass {
+    background: rgba(19, 26, 36, 0.72);
+    backdrop-filter: blur(18px) saturate(140%);
+    -webkit-backdrop-filter: blur(18px) saturate(140%);
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .glass-strong {
+    background: rgba(11, 15, 22, 0.82);
+    backdrop-filter: blur(22px) saturate(160%);
+    -webkit-backdrop-filter: blur(22px) saturate(160%);
+    border: 1px solid rgba(255,255,255,0.07);
+  }
+
+  ::-webkit-scrollbar { width: 0; height: 0; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+  /* Bottom nav sliding pill */
+  .nav-pill {
+    position: absolute; top: 6px; bottom: 6px;
+    width: calc(100% / 3 - 8px);
+    border-radius: 14px;
+    background: linear-gradient(135deg, rgba(16,185,129,0.22), rgba(99,102,241,0.22));
+    border: 1px solid rgba(255,255,255,0.08);
+    transition: transform 320ms cubic-bezier(.22,1,.36,1);
+    z-index: 0;
+  }
+
+  /* Page transition */
+  .page { animation: rise 380ms cubic-bezier(.22,1,.36,1); }
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .tap { transition: transform 150ms ease, filter 150ms ease; }
+  .tap:active { transform: scale(0.96); filter: brightness(0.95); }
+
+  /* Emergency pulse ring */
+  .pulse-ring {
+    position: absolute; inset: 0; border-radius: inherit;
+    box-shadow: 0 0 0 0 rgba(239,68,68,0.55);
+    animation: pulse 2.2s cubic-bezier(.4,0,.6,1) infinite;
+  }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(239,68,68,0.45); }
+    70% { box-shadow: 0 0 0 14px rgba(239,68,68,0); }
+    100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); }
+  }
+
+  .chip { transition: all 180ms ease; }
+  .skeleton { background: linear-gradient(90deg, #14243A 25%, #1C304A 37%, #14243A 63%); background-size: 400% 100%; animation: shimmer 1.4s ease infinite; }
+  @keyframes shimmer { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
+
+  dialog.sheet::backdrop { background: rgba(3,5,8,0.6); backdrop-filter: blur(2px); }
+  dialog.sheet { animation: sheetIn 320ms cubic-bezier(.22,1,.36,1); }
+  @keyframes sheetIn { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+  input:focus-visible, button:focus-visible, textarea:focus-visible {
+    outline: 2px solid #58D7EF; outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+  }
+
+  /* ==========================================================
+     MTU CAMPUS — PREMIUM VISUAL REFRESH
+     IMPORTANT: existing class/id attributes are untouched.
+     This layer changes presentation only.
+     ========================================================== */
+
+  :root {
+    --campus-navy: #07111F;
+    --campus-panel: rgba(16, 29, 49, 0.82);
+    --campus-panel-2: rgba(11, 23, 40, 0.92);
+    --campus-cyan: #18B6D9;
+    --campus-cyan-soft: #58D7EF;
+    --campus-purple: #6D5EF5;
+    --campus-gold: #F5C451;
+    --campus-text: #F4F8FC;
+    --campus-muted: #91A4BA;
+    --campus-border: rgba(148, 181, 214, 0.14);
+  }
+
+  html {
+    background: #050D18;
+  }
+
+  body {
+    min-height: 100vh;
+    background:
+      radial-gradient(circle at 50% -12%, rgba(24,182,217,.18), transparent 30%),
+      radial-gradient(circle at 92% 20%, rgba(109,94,245,.12), transparent 26%),
+      linear-gradient(180deg, #07111F 0%, #081426 50%, #06101D 100%);
+  }
+
+  /* subtle academic / campus grid texture */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    opacity: .22;
+    background-image:
+      linear-gradient(rgba(88,215,239,.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(88,215,239,.035) 1px, transparent 1px);
+    background-size: 42px 42px;
+    mask-image: linear-gradient(to bottom, black, transparent 78%);
+  }
+
+  /* Let the app feel like a real responsive campus web app */
+  body > div {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* App shell */
+  body > div > div {
+    background:
+      linear-gradient(180deg, rgba(7,17,31,.86), rgba(6,16,29,.98)) !important;
+    box-shadow:
+      0 0 0 1px rgba(148,181,214,.06),
+      0 30px 100px rgba(0,0,0,.34);
+  }
+
+  /* Top header */
+  header {
+    background: linear-gradient(
+      180deg,
+      rgba(7,17,31,.96) 0%,
+      rgba(7,17,31,.82) 72%,
+      rgba(7,17,31,0) 100%
+    );
+  }
+
+  header::after {
+    content: "";
+    position: absolute;
+    left: 20px;
+    right: 20px;
+    bottom: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(88,215,239,.22), transparent);
+  }
+
+  /* Logo becomes a university-style badge */
+  header .w-10.h-10 {
+    background:
+      linear-gradient(135deg, #18B6D9 0%, #6D5EF5 100%) !important;
+    border-radius: 13px !important;
+    box-shadow:
+      0 10px 28px rgba(24,182,217,.18),
+      inset 0 1px 0 rgba(255,255,255,.25) !important;
+    letter-spacing: -.04em;
+  }
+
+  #pageTitle {
+    font-size: 1.08rem;
+    letter-spacing: -.025em;
+  }
+
+  #pageSubtitle {
+    color: #91A4BA !important;
+  }
+
+  /* Notification button */
+  #notifBtn {
+    background: rgba(16,29,49,.74) !important;
+    border-color: rgba(148,181,214,.13) !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+  }
+
+  #notifBtn:hover {
+    border-color: rgba(88,215,239,.32) !important;
+    color: #58D7EF !important;
+    transform: translateY(-1px);
+  }
+
+  #notifBadge {
+    background: #F5C451 !important;
+    box-shadow: 0 0 0 2px #07111F, 0 0 12px rgba(245,196,81,.5) !important;
+  }
+
+  /* All glass panels */
+  .glass {
+    background:
+      linear-gradient(145deg, rgba(20,36,58,.82), rgba(8,20,36,.76)) !important;
+    border: 1px solid var(--campus-border) !important;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.045),
+      0 14px 38px rgba(0,0,0,.18) !important;
+  }
+
+  .glass-strong {
+    background:
+      linear-gradient(145deg, rgba(16,29,49,.96), rgba(6,16,29,.94)) !important;
+    border: 1px solid rgba(148,181,214,.14) !important;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.05),
+      0 20px 55px rgba(0,0,0,.34) !important;
+  }
+
+  /* Search */
+  #searchInput {
+    color: #F4F8FC;
+  }
+
+  #searchInput::placeholder {
+    color: #667C95;
+  }
+
+  #searchInput:focus {
+    box-shadow: 0 0 0 3px rgba(24,182,217,.10);
+  }
+
+  /* Search/filter button */
+  #searchInput + button {
+    background: rgba(42,65,94,.52) !important;
+    border: 1px solid rgba(148,181,214,.10);
+  }
+
+  #searchInput + button:hover {
+    background: rgba(24,182,217,.14) !important;
+    color: #58D7EF !important;
+  }
+
+  /* Category chips generated by JS */
+  #categoryChips > * {
+    border-color: rgba(148,181,214,.12) !important;
+    background: rgba(16,29,49,.72) !important;
+    color: #9FB1C5 !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.025);
+    transition: .2s ease;
+  }
+
+  #categoryChips > *:hover {
+    border-color: rgba(88,215,239,.32) !important;
+    color: #58D7EF !important;
+    transform: translateY(-1px);
+  }
+
+  /* Product cards created by app.js */
+  #productGrid > * {
+    border: 1px solid rgba(148,181,214,.11);
+    background:
+      linear-gradient(155deg, rgba(20,36,58,.86), rgba(10,22,38,.90));
+    box-shadow:
+      0 12px 32px rgba(0,0,0,.20),
+      inset 0 1px 0 rgba(255,255,255,.035);
+    transition:
+      transform 220ms cubic-bezier(.22,1,.36,1),
+      border-color 220ms ease,
+      box-shadow 220ms ease;
+    overflow: hidden;
+  }
+
+  #productGrid > *:hover {
+    transform: translateY(-4px);
+    border-color: rgba(88,215,239,.24);
+    box-shadow:
+      0 20px 42px rgba(0,0,0,.28),
+      0 0 0 1px rgba(24,182,217,.06);
+  }
+
+  #productGrid img {
+    transition: transform 420ms cubic-bezier(.22,1,.36,1);
+  }
+
+  #productGrid > *:hover img {
+    transform: scale(1.035);
+  }
+
+  /* Express page */
+  #page-express > div:first-child {
+    box-shadow:
+      0 18px 45px rgba(0,0,0,.28),
+      inset 0 1px 0 rgba(255,255,255,.04);
+  }
+
+  #page-express .text-emerald-soft,
+  #page-express .bg-emerald-soft {
+    color: #58D7EF !important;
+  }
+
+  /* Lost & Found toggle */
+  #page-lostfound .glass {
+    background: rgba(16,29,49,.82) !important;
+  }
+
+  #lfPill {
+    background: linear-gradient(135deg, #6D5EF5, #18B6D9) !important;
+    box-shadow: 0 8px 22px rgba(109,94,245,.24);
+  }
+
+  /* Floating action buttons*/
+  #fabMarketplace,
+  #fabLostFound {
+    background: linear-gradient(135deg, #6D5EF5 0%, #18B6D9 100%) !important;
+    box-shadow:
+      0 14px 30px rgba(109,94,245,.26),
+      0 0 0 1px rgba(255,255,255,.08) !important;
+  }
+
+  #fabExpress {
+    background: linear-gradient(135deg, #18B6D9, #58D7EF) !important;
+    color: #06101D !important;
+    box-shadow:
+      0 14px 30px rgba(24,182,217,.24),
+      0 0 0 1px rgba(255,255,255,.08) !important;
+  }
+
+  #fabMarketplace:hover,
+  #fabExpress:hover,
+  #fabLostFound:hover {
+    transform: translateY(-3px);
+    filter: brightness(1.06);
+  }
+
+  /* Bottom navigation */
+  nav {
+    background: linear-gradient(180deg, transparent, rgba(5,13,24,.48));
+  }
+
+  .nav-pill {
+    background:
+      linear-gradient(135deg, rgba(109,94,245,.22), rgba(24,182,217,.18)) !important;
+    border-color: rgba(88,215,239,.16) !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.045);
+  }
+
+  .navBtn {
+    color: #71869E;
+    transition: color 180ms ease, transform 180ms ease;
+  }
+
+  .navBtn:hover {
+    color: #D9F7FF;
+  }
+
+  .navBtn i {
+    transition: transform 180ms ease;
+  }
+
+  .navBtn:hover i {
+    transform: translateY(-1px);
+  }
+
+  /* Modal sheets */
+  dialog.sheet {
+    background:
+      linear-gradient(155deg, rgba(16,29,49,.98), rgba(7,17,31,.99)) !important;
+    border-color: rgba(148,181,214,.14) !important;
+    box-shadow: 0 -25px 80px rgba(0,0,0,.45);
+  }
+
+  dialog.sheet input,
+  dialog.sheet textarea,
+  dialog.sheet select {
+    background: rgba(20,36,58,.72) !important;
+    border-color: rgba(148,181,214,.13) !important;
+    color: #F4F8FC !important;
+  }
+
+  dialog.sheet input:focus,
+  dialog.sheet textarea:focus,
+  dialog.sheet select:focus {
+    border-color: rgba(88,215,239,.48) !important;
+    box-shadow: 0 0 0 3px rgba(24,182,217,.09);
+  }
+
+  /* Upload zone */
+  #photoDropzone {
+    background:
+      radial-gradient(circle at 50% 20%, rgba(24,182,217,.08), transparent 45%),
+      rgba(20,36,58,.46) !important;
+    border-color: rgba(88,215,239,.18) !important;
+  }
+
+  #photoDropzone:hover {
+    border-color: rgba(88,215,239,.46) !important;
+    background: rgba(24,182,217,.06) !important;
+  }
+
+  /* Modal primary actions */
+  #postItemForm button[type="submit"],
+  #reportForm button[type="submit"] {
+    background: linear-gradient(90deg, #6D5EF5, #18B6D9) !important;
+    box-shadow: 0 12px 28px rgba(109,94,245,.20) !important;
+  }
+
+  #errandForm button[type="submit"] {
+    background: linear-gradient(90deg, #18B6D9, #58D7EF) !important;
+    color: #06101D !important;
+    box-shadow: 0 12px 28px rgba(24,182,217,.18) !important;
+  }
+
+  /* Small visual hierarchy helpers */
+  .font-display {
+    letter-spacing: -.025em;
+  }
+
+  button {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  ::selection {
+    background: rgba(24,182,217,.30);
+    color: white;
+  }
+
+  @media (min-width: 768px) {
+    /* The original class remains untouched; only presentation is widened. */
+    body > div > div {
+      max-width: 860px !important;
+      min-height: 94vh !important;
+      margin-top: 3vh;
+      margin-bottom: 3vh;
+      border-radius: 28px;
+      overflow: hidden;
+    }
+
+    header {
+      border-radius: 28px 28px 0 0;
+    }
+
+    #productGrid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 767px) {
+    body > div > div {
+      min-height: 100vh;
+    }
+  }
+
+</style>
+</head>
+
+<body class="min-h-screen bg-base-950 text-slate-100 antialiased">
+
+  <!-- Phone frame -->
+  <div class="mx-auto max-w-[440px] min-h-screen relative flex flex-col bg-base-950">
+
+    <!-- ============ TOP APP BAR ============ -->
+    <header class="sticky top-0 z-30 relative overflow-hidden">
+      <div class="aurora"></div>
+      <div class="relative z-10 px-5 pt-6 pb-4 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald to-indigo flex items-center justify-center shadow-glow-em font-display font-bold text-base-950 text-sm">M</div>
+          <div>
+            <p id="pageTitle" class="font-display font-bold text-lg leading-tight tracking-tight">MTU Campus</p>
+            <p id="pageSubtitle" class="text-xs text-slate-400">Connect, trade &amp; find your campus community</p>
+          </div>
+        </div>
+        
+        <!-- 🔔 Notification Button with Unread Badge -->
+        <button id="notifBtn" type="button" class="tap w-10 h-10 rounded-2xl glass flex items-center justify-center relative hover:text-white transition-colors">
+          <i data-lucide="bell" class="w-[18px] h-[18px] text-slate-200"></i>
+          <span id="notifBadge" class="absolute top-2 right-2 w-2 h-2 rounded-full bg-emerald-soft ring-2 ring-base-950"></span>
+        </button>
+      </div>
+    </header>
+
+    <!-- ============ MAIN CONTENT ============ -->
+    <main class="flex-1 relative z-10 pb-28">
+
+      <!-- ---------- MARKETPLACE PAGE ---------- -->
+      <section id="page-marketplace" class="page px-5 space-y-4">
+
+        <!-- Search -->
+        <div class="flex items-center gap-2 glass rounded-2xl px-4 py-3 shadow-glow">
+          <i data-lucide="search" class="w-4 h-4 text-slate-400"></i>
+          <input id="searchInput" type="text" placeholder="Search items, sellers, dorms..."
+            class="bg-transparent flex-1 text-sm placeholder:text-slate-500 outline-none" />
+          <button class="tap w-7 h-7 rounded-full bg-base-700/70 flex items-center justify-center">
+            <i data-lucide="sliders-horizontal" class="w-3.5 h-3.5 text-slate-300"></i>
+          </button>
+        </div>
+
+        <!-- Category chips -->
+        <div id="categoryChips" class="flex gap-2 overflow-x-auto no-scrollbar pb-1"></div>
+
+        <!-- Product grid -->
+        <div id="productGrid" class="grid grid-cols-2 gap-3"></div>
+      </section>
+
+      <!-- ---------- CAMPUS EXPRESS & EMERGENCY PAGE ---------- -->
+      <section id="page-express" class="page px-5 space-y-5 hidden">
+
+        <!-- Emergency banner -->
+        <div class="relative rounded-3xl p-5 overflow-hidden bg-gradient-to-br from-[#3B0A0A] via-[#4A1207] to-[#5A1B06] border border-red-500/30 shadow-glow">
+          <div class="absolute -right-8 -top-8 w-32 h-32 rounded-full bg-red-500/20 blur-2xl"></div>
+          <div class="relative z-10 flex items-start gap-3">
+            <div class="relative shrink-0 w-11 h-11 rounded-2xl bg-red-500/20 flex items-center justify-center border border-red-400/30">
+              <div class="pulse-ring"></div>
+              <i data-lucide="siren" class="w-5 h-5 text-red-300"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2">
+                <p class="font-display font-bold text-sm text-red-50">Emergency Assistance</p>
+                <span class="text-[10px] uppercase tracking-wide font-semibold text-amber-300 bg-amber-500/10 border border-amber-400/30 px-1.5 py-0.5 rounded-md">Live 24/7</span>
+              </div>
+              <p class="text-xs text-red-100/70 mt-1 leading-relaxed">Feeling unwell, injured, or need an urgent clinic escort? Get a verified campus responder to you fast.</p>
+              <button id="btnEmergency" class="tap mt-3 w-full bg-red-500 hover:bg-red-400 text-white text-sm font-semibold py-2.5 rounded-xl flex items-center justify-center gap-2 shadow-[0_8px_20px_-4px_rgba(239,68,68,0.55)]">
+                <i data-lucide="phone-call" class="w-4 h-4"></i>
+                Request Emergency Escort
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section header -->
+        <div class="flex items-center justify-between pt-1">
+          <div>
+            <p class="font-display font-semibold text-sm text-slate-100">Delivery &amp; Errands</p>
+            <p class="text-xs text-slate-500">Runners near your dorm</p>
+          </div>
+          <div class="flex items-center gap-1.5 text-xs text-emerald-soft bg-emerald/10 border border-emerald/20 px-2.5 py-1 rounded-full">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-soft animate-pulse"></span>
+            12 runners online
+          </div>
+        </div>
+
+        <!-- Errand feed -->
+        <div id="errandFeed" class="space-y-3"></div>
+      </section>
+
+      <!-- ---------- LOST & FOUND PAGE ---------- -->
+      <section id="page-lostfound" class="page px-5 space-y-4 hidden">
+
+        <!-- Toggle -->
+        <div class="relative flex glass rounded-2xl p-1 shadow-glow">
+          <div id="lfPill" class="absolute top-1 bottom-1 left-1 w-[calc(33.333%-4px)] rounded-xl bg-gradient-to-br from-indigo to-indigo-soft transition-transform duration-300 ease-out"></div>
+          <button data-lf="all" class="lf-toggle-btn relative z-10 flex-1 text-xs font-semibold py-2.5 rounded-xl text-white">All</button>
+          <button data-lf="lost" class="lf-toggle-btn relative z-10 flex-1 text-xs font-semibold py-2.5 rounded-xl text-slate-400">Lost</button>
+          <button data-lf="found" class="lf-toggle-btn relative z-10 flex-1 text-xs font-semibold py-2.5 rounded-xl text-slate-400">Found</button>
+        </div>
+
+        <div id="lostFoundList" class="space-y-3"></div>
+      </section>
+
+    </main>
+
+    <!-- ============ FLOATING ACTION BUTTONS ============ -->
+    <button id="fabMarketplace" class="fab tap fixed z-40 bottom-24 right-5 max-[440px]:right-[max(1.25rem,calc((100vw-440px)/2+1.25rem))] bg-gradient-to-br from-indigo to-indigo-soft text-white shadow-glow-in rounded-2xl px-4 py-3.5 flex items-center gap-2 font-semibold text-sm">
+      <i data-lucide="plus" class="w-4 h-4"></i> Post Item
+    </button>
+    <button id="fabExpress" class="fab tap fixed z-40 bottom-24 right-5 max-[440px]:right-[max(1.25rem,calc((100vw-440px)/2+1.25rem))] hidden bg-gradient-to-br from-emerald to-emerald-soft text-base-950 shadow-glow-em rounded-2xl px-4 py-3.5 flex items-center gap-2 font-semibold text-sm">
+      <i data-lucide="package-plus" class="w-4 h-4"></i> Request Errand
+    </button>
+    <button id="fabLostFound" class="fab tap fixed z-40 bottom-24 right-5 max-[440px]:right-[max(1.25rem,calc((100vw-440px)/2+1.25rem))] hidden bg-gradient-to-br from-indigo to-emerald text-white shadow-glow rounded-2xl px-4 py-3.5 flex items-center gap-2 font-semibold text-sm">
+      <i data-lucide="plus" class="w-4 h-4"></i> Report Item
+    </button>
+
+    <!-- ============ BOTTOM NAVIGATION ============ -->
+    <nav class="fixed z-40 bottom-0 left-0 right-0">
+      <div class="mx-auto max-w-[440px] px-4 pb-5 pt-2">
+        <div class="relative glass-strong rounded-2xl shadow-glow flex px-1 py-1">
+          <div id="navPill" class="nav-pill"></div>
+          <button data-tab="marketplace" class="navBtn relative z-10 flex-1 flex flex-col items-center gap-1 py-2.5 rounded-xl">
+            <i data-lucide="shopping-bag" class="w-[18px] h-[18px]"></i>
+            <span class="text-[10.5px] font-semibold">Marketplace</span>
+          </button>
+          <button data-tab="express" class="navBtn relative z-10 flex-1 flex flex-col items-center gap-1 py-2.5 rounded-xl">
+            <i data-lucide="truck" class="w-[18px] h-[18px]"></i>
+            <span class="text-[10.5px] font-semibold">Express</span>
+          </button>
+          <button data-tab="lostfound" class="navBtn relative z-10 flex-1 flex flex-col items-center gap-1 py-2.5 rounded-xl">
+            <i data-lucide="search-check" class="w-[18px] h-[18px]"></i>
+            <span class="text-[10.5px] font-semibold">Lost &amp; Found</span>
+          </button>
+        </div>
+      </div>
+    </nav>
+  </div>
+
+  <!-- ============ MODALS / BOTTOM SHEETS ============ -->
+
+  <!-- 🔔 Dynamic Notifications Modal Drawer -->
+<dialog id="notifModal" class="sheet w-full max-w-[440px] m-0 mx-auto mb-0 mt-auto rounded-t-3xl bg-base-850 border-t border-white/10 p-0 backdrop:bg-black/60 max-h-[80vh] overflow-y-auto">
+  <div class="p-5 pb-8">
+    <div class="w-10 h-1 bg-base-600 rounded-full mx-auto mb-5"></div>
+    <div class="flex items-center justify-between mb-4">
+      <div class="flex items-center gap-2">
+        <p class="font-display font-bold text-base">Notifications</p>
+        <span id="notifCountTag" class="text-[10px] bg-emerald/20 text-emerald-soft px-2 py-0.5 rounded-full font-semibold">Live</span>
+      </div>
+      <button type="button" data-close-modal="notifModal" class="tap w-8 h-8 rounded-full bg-base-700 flex items-center justify-center">
+        <i data-lucide="x" class="w-4 h-4 text-slate-300"></i>
+      </button>
+    </div>
+
+    <!-- Dynamic Container for Live Notifications -->
+    <div id="notifContainer" class="space-y-3">
+      <!-- አዳዲስ ኖቲፊኬሽኖች እዚህ ውስጥ በ JavaScript በኩል ይገባሉ -->
+    </div>
+  </div>
+</dialog>
+
+  <!-- Contact Seller / Runner / Claim modal (generic) -->
+  <dialog id="contactModal" class="sheet w-full max-w-[440px] m-0 mx-auto mb-0 mt-auto rounded-t-3xl bg-base-850 border-t border-white/10 p-0 backdrop:bg-black/60">
+    <div class="p-5 pb-8">
+      <div class="w-10 h-1 bg-base-600 rounded-full mx-auto mb-5"></div>
+      <div class="flex items-center gap-3 mb-5">
+        <div id="contactAvatar" class="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo to-emerald flex items-center justify-center font-display font-bold text-base-950">A</div>
+        <div class="flex-1 min-w-0">
+          <p id="contactName" class="font-semibold text-sm">Seller Name</p>
+          <p id="contactMeta" class="text-xs text-slate-400">Location</p>
+        </div>
+        <button data-close-modal="contactModal" class="tap w-8 h-8 rounded-full bg-base-700 flex items-center justify-center">
+          <i data-lucide="x" class="w-4 h-4 text-slate-300"></i>
+        </button>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <button class="tap flex items-center justify-center gap-2 bg-emerald text-base-950 font-semibold text-sm py-3 rounded-xl">
+          <i data-lucide="phone" class="w-4 h-4"></i> Call
+        </button>
+        <button class="tap flex items-center justify-center gap-2 glass text-slate-100 font-semibold text-sm py-3 rounded-xl">
+          <i data-lucide="message-circle" class="w-4 h-4"></i> Message
+        </button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Post Item modal -->
+  <dialog id="postItemModal" class="sheet w-full max-w-[440px] m-0 mx-auto mb-0 mt-auto rounded-t-3xl bg-base-850 border-t border-white/10 p-0 backdrop:bg-black/60 max-h-[88vh] overflow-y-auto">
+    <form id="postItemForm" class="p-5 pb-8">
+      <div class="w-10 h-1 bg-base-600 rounded-full mx-auto mb-5"></div>
+      <div class="flex items-center justify-between mb-5">
+        <p class="font-display font-bold text-base">Post an Item</p>
+        <button type="button" data-close-modal="postItemModal" class="tap w-8 h-8 rounded-full bg-base-700 flex items-center justify-center">
+          <i data-lucide="x" class="w-4 h-4 text-slate-300"></i>
+        </button>
+      </div>
+
+      <!-- File Upload Box with Click & Preview Support -->
+      <div id="photoDropzone" class="border-2 border-dashed border-base-600 rounded-2xl py-8 flex flex-col items-center justify-center gap-2 mb-4 text-slate-500 cursor-pointer relative overflow-hidden bg-base-800/40 hover:border-emerald-soft transition-all min-h-[140px]">
+        <input type="file" id="itemImageInput" name="image" accept="image/*" class="hidden" />
+        
+        <div id="photoPlaceholder" class="flex flex-col items-center gap-2">
+          <i data-lucide="image-plus" class="w-6 h-6"></i>
+          <span class="text-xs">Tap to add photo</span>
+        </div>
+
+        <img id="photoPreview" class="hidden absolute inset-0 w-full h-full object-cover rounded-2xl" alt="Preview" />
+      </div>
+
+      <div class="space-y-3">
+        <input required name="title" placeholder="Item title" class="w-full bg-base-800 border border-base-600 rounded-xl px-4 py-3 text-sm placeholder:text-slate-500 outline-none focus:border-indigo-soft" />
+        <div class="grid grid-cols-2 gap-3">
+          <input required name="price" type="number" placeholder="Price (ETB)" class="w-full bg-base-800 border border-base-600 rounded-xl px-4 py-3 text-sm placeholder:text-slate-500 outline-none focus:border-indigo-soft" />
+          <select name="category" class="w-full bg-base-800 border border-base-600 rounded-xl px-4 py-3 text-sm text-slate-300 outline-none focus:border-indigo-soft">
+            <option value="Electronics">Electronics</option>
+            <option value="Books">Books</option>
+            <option value="Clothing">Clothing</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <input required name="phone" type="tel" placeholder="Phone Number (09...)" class="w-full bg-base-800 border border-base-600 rounded-xl px-4 py-3 text-sm placeholder:text-slate-500 outline-none focus:border-indigo-soft" />
+          <input name="telegram" placeholder="Telegram (@username)" class="w-full bg-base-800 border border-base-600 rounded-xl px-4 py-3 text-sm placeholder:text-slate-500 outline-none focus:border-indigo-soft" />
+        </div>
+
+        <textarea name="description" placeholder="Description" rows="2" class="w-full bg-base-800 border border-base-600 rounded-xl px-4 py-3 text-sm placeholder:text-slate-500 outline-none focus:border-indigo-soft resize-none"></textarea>
+      </div>
+
+      <button type="submit" class="tap w-full mt-5 bg-gradient-to-r from-indigo to-emerald text-white font-semibold text-sm py-3.5 rounded-xl shadow-glow-in">Publish Listing</button>
+    </form>
+  </dialog>
+
+  <!-- Request Errand modal -->
+  <dialog id="errandModal" class="sheet w-full max-w-[440px] m-0 mx-auto mb-0 mt-auto rounded-t-3xl bg-base-850 border-t border-white/10 p-0 backdrop:bg-black/60 max-h-[88vh] overflow-y-auto">
+    <form id="errandForm" class="p-5 pb-8">
+      <div class="w-10 h-1 bg-base-600 rounded-full mx-auto mb-5"></div>
+      <div class="flex items-center justify-between mb-5">
+        <p class="font-display font-bold text-base">Request an Errand</p>
+        <button type="button" data-close-modal="errandModal" class="tap w-8 h-8 rounded-full bg-base-700 flex items-center justify-center">
+          <i data-lucide="x" class="w-4 h-4 text-slate-300"></i>
+        </button>
+      </div>
+      <div class="space-y-3">
+        <input required name="title" placeholder="What do you need? (e.g. Lunch from cafeteria)" class="w-full bg-base-800 border border-base-600 rounded-xl px-4 py-3 text-sm placeholder:text-slate-500 outline-none focus:border-emerald-soft" />
+        <input required name="location" placeholder="Dorm / delivery location" class="w-full bg-base-800 border border-base-600 rounded-xl px-4 py-3 text-sm placeholder:text-slate-500 outline-none focus:border-emerald-soft" />
+        <input required name="tip" type="number" placeholder="Runner tip (ETB)" class="w-full bg-base-800 border border-base-600 rounded-xl px-4 py-3 text-sm placeholder:text-slate-500 outline-none focus:border-emerald-soft" />
+        
+        <div class="grid grid-cols-2 gap-3">
+          <input required name="phone" type="tel" placeholder="Phone Number (09...)" class="w-full bg-base-800 border border-base-600 rounded-xl px-4 py-3 text-sm placeholder:text-slate-500 outline-none focus:border-emerald-soft" />
+          <input name="telegram" placeholder="Telegram (@username)" class="w-full bg-base-800 border border-base-600 rounded-xl px-4 py-3 text-sm placeholder:text-slate-500 outline-none focus:border-emerald-soft" />
+        </div>
+      </div>
+      <button type="submit" class="tap w-full mt-5 bg-emerald text-base-950 font-semibold text-sm py-3.5 rounded-xl shadow-glow-em">Post Errand</button>
+    </form>
+  </dialog>
+
+  <!-- Report Lost/Found modal -->
+  <dialog id="reportModal" class="sheet w-full max-w-[440px] m-0 mx-auto mb-0 mt-auto rounded-t-3xl bg-base-850 border-t border-white/10 p-0 backdrop:bg-black/60 max-h-[88vh] overflow-y-auto">
+    <form id="reportForm" class="p-5 pb-8">
+      <div class="w-10 h-1 bg-base-600 rounded-full mx-auto mb-5"></div>
+      <div class="flex items-center justify-between mb-5">
+        <p class="font-display font-bold text-base">Report an Item</p>
+        <button type="button" data-close-modal="reportModal" class="tap w-8 h-8 rounded-full bg-base-700 flex items-center justify-center">
+          <i data-lucide="x" class="w-4 h-4 text-slate-300"></i>
+        </button>
+      </div>
+      <div class="grid grid-cols-2 gap-3 mb-4">
+        <button type="button" data-status="lost" class="report-status-btn tap py-3 rounded-xl text-sm font-semibold border border-emerald bg-emerald/20 text-emerald-soft">
+          I Lost Something
+        </button>
+        <button type="button" data-status="found" class="report-status-btn tap py-3 rounded-xl text-sm font-semibold border border-base-600 bg-base-800 text-slate-300">
+          I Found Something 
+        </button>
+      </div>
+      <div class="space-y-3">
+        <input required name="title" placeholder="Item name (e.g. Black backpack)" class="w-full bg-base-800 border border-base-600 rounded-xl px-4 py-3 text-sm placeholder:text-slate-500 outline-none focus:border-indigo-soft" />
+        <input required name="location" placeholder="Location" class="w-full bg-base-800 border border-base-600 rounded-xl px-4 py-3 text-sm placeholder:text-slate-500 outline-none focus:border-indigo-soft" />
+        <input required name="date" type="date" class="w-full bg-base-800 border border-base-600 rounded-xl px-4 py-3 text-sm text-slate-300 outline-none focus:border-indigo-soft" />
+        
+        <div class="grid grid-cols-2 gap-3">
+          <input required name="phone" type="tel" placeholder="Phone Number (09...)" class="w-full bg-base-800 border border-base-600 rounded-xl px-4 py-3 text-sm placeholder:text-slate-500 outline-none focus:border-indigo-soft" />
+          <input name="telegram" placeholder="Telegram (@username)" class="w-full bg-base-800 border border-base-600 rounded-xl px-4 py-3 text-sm placeholder:text-slate-500 outline-none focus:border-indigo-soft" />
+        </div>
+      </div>
+      <button type="submit" class="tap w-full mt-5 bg-gradient-to-r from-indigo to-emerald text-white font-semibold text-sm py-3.5 rounded-xl shadow-glow-in">Submit Report</button>
+    </form>
+  </dialog>
+
+  <!-- Emergency Confirm modal -->
+  <dialog id="emergencyModal" class="sheet w-full max-w-[440px] m-0 mx-auto mb-0 mt-auto rounded-t-3xl bg-base-850 border-t border-red-500/20 p-0 backdrop:bg-black/70">
+    <div class="p-6 pb-8 text-center">
+      <div class="w-14 h-14 rounded-2xl bg-red-500/15 border border-red-400/30 flex items-center justify-center mx-auto mb-4">
+        <i data-lucide="siren" class="w-6 h-6 text-red-300"></i>
+      </div>
+      <p class="font-display font-bold text-base mb-1">Confirm Emergency Escort</p>
+      <p class="text-xs text-slate-400 leading-relaxed mb-5">A verified campus responder will be dispatched to your current location immediately. Only use this for genuine medical or safety emergencies.</p>
+      <div class="grid grid-cols-2 gap-3">
+        <button data-close-modal="emergencyModal" class="tap py-3 rounded-xl text-sm font-semibold glass text-slate-200">Cancel</button>
+        <button id="confirmEmergency" class="tap py-3 rounded-xl text-sm font-semibold bg-red-500 text-white shadow-[0_8px_20px_-4px_rgba(239,68,68,0.55)]">Confirm &amp; Dispatch</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Toast -->
+  <div id="toast" class="fixed z-50 left-1/2 -translate-x-1/2 bottom-6 translate-y-24 opacity-0 transition-all duration-300 glass-strong px-4 py-3 rounded-xl flex items-center gap-2 text-sm font-medium shadow-glow">
+    <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-soft"></i>
+    <span id="toastMsg">Done</span>
+  </div>
+
+  <script src="app.js"></script>
+
+  <!-- 💡 Notification Button Handling Script -->
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const notifBtn = document.getElementById("notifBtn");
+      const notifModal = document.getElementById("notifModal");
+      const notifBadge = document.getElementById("notifBadge");
+
+      if (notifBtn && notifModal) {
+        notifBtn.addEventListener("click", () => {
+          if (notifBadge) {
+            notifBadge.classList.add("hidden"); // ያላየኸው የለም ለማለት ነጥቧን ማጥፋት
+          }
+          notifModal.showModal();
+        });
+      }
+    });
+  </script>
+
+</body>
+</html>
