@@ -12,7 +12,7 @@ if (tg) {
 
 /* ---------------- Sample & GitHub Data Storage ---------------- */
 
-const GITHUB_RAW_URL = "https://raw.githubusercontent.com/yishrun286/MY-PORTFOLIO/main/listings.json";
+const GITHUB_RAW_URL = "https://raw.githubusercontent.com/yishrun286/mtu-campus-app/main/listings.json";
 
 const INITIAL_PRODUCTS = [
   { id: 1, title: "TI-84 Plus Calculator", price: 1450, category: "Electronics", location: "Block 6", seller: "Hana T.", phone: "0911223344", telegram: "hana_t", image: null, emoji: "🧮", color: "from-indigo to-indigo-soft" },
