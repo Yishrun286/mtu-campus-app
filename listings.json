@@ -1,0 +1,15 @@
+[
+  {
+    "id": 1,
+    "title": "TI-84 Plus Calculator",
+    "price": 1450,
+    "category": "Electronics",
+    "location": "Block 6",
+    "seller": "Hana T.",
+    "phone": "0911223344",
+    "telegram": "hana_t",
+    "image": null,
+    "emoji": "🧮",
+    "color": "from-indigo to-indigo-soft"
+  }
+]
