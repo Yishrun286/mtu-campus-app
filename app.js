@@ -1,6 +1,13 @@
 /* ============================================================
    MTU Campus — Firebase Production Logic & Real-time Sync
    Tabs: Marketplace · Campus Express & Emergency · Lost & Found
+   Features Included:
+     - Real-time Sync & Image File Readers
+     - Mark as Sold / Available & Admin Deletion
+     - Safety Tip Banner
+     - [NEW] Firestore Views / Analytics Counter
+     - [NEW] Telegram Native Share Link Button
+     - [NEW] Skeleton Loading Animations
    ============================================================ */
 
 // ---------------- Firebase Configuration & Init ----------------
@@ -52,6 +59,7 @@ let PRODUCTS = [];
 let ERRANDS = [];
 let LOSTFOUND = [];
 let notifications = JSON.parse(localStorage.getItem("mtu_notifications")) || [];
+let isLoadingProducts = true;
 
 const CATEGORIES = ["All", "Electronics", "Books", "Clothing"];
 const COLOR_GRADIENTS = [
@@ -76,13 +84,21 @@ function listenToFirestore() {
     new Date(Date.now() - 14 * 24 * 60 * 60 * 1000)
   );
 
+  // Show Skeletons initially
+  renderSkeletonLoaders();
+
   // 1. Real-time Products Sync
   db.collection("products")
     .where("createdAt", ">=", fourteenDaysAgo)
     .onSnapshot((snapshot) => {
-      PRODUCTS = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      isLoadingProducts = false;
+      PRODUCTS = snapshot.docs.map(doc => ({ id: doc.id, views: 0, ...doc.data() }));
       renderProductGrid();
-    }, (err) => console.error("Products listener error:", err));
+    }, (err) => {
+      console.error("Products listener error:", err);
+      isLoadingProducts = false;
+      renderProductGrid();
+    });
 
   // 2. Real-time Errands Sync
   db.collection("errands")
@@ -145,6 +161,53 @@ function refreshIcons() {
   if (window.lucide) window.lucide.createIcons();
 }
 
+/* ---------------- [NEW FEATURE 1] Skeleton Loading Placeholders ---------------- */
+
+function renderSkeletonLoaders() {
+  const grid = document.getElementById("productGrid");
+  if (!grid) return;
+
+  const skeletonHTML = Array(4).fill(0).map(() => `
+    <div class="rounded-2xl overflow-hidden glass shadow-glow flex flex-col animate-pulse">
+      <div class="h-28 bg-base-700/60 w-full"></div>
+      <div class="p-3 flex flex-col gap-2 flex-1">
+        <div class="h-3.5 bg-base-700/70 rounded w-3/4"></div>
+        <div class="h-3 bg-base-700/40 rounded w-1/2"></div>
+        <div class="h-4 bg-emerald/20 rounded w-1/3 mt-1"></div>
+        <div class="h-8 bg-base-700/60 rounded-lg w-full mt-2"></div>
+      </div>
+    </div>
+  `).join("");
+
+  grid.innerHTML = skeletonHTML;
+}
+
+/* ---------------- [NEW FEATURE 2] View Counter Logic ---------------- */
+
+async function incrementViews(productId) {
+  if (!productId) return;
+  try {
+    const docRef = db.collection("products").doc(String(productId));
+    await docRef.update({
+      views: firebase.firestore.FieldValue.increment(1)
+    });
+  } catch (err) {
+    console.warn("Could not increment views:", err);
+  }
+}
+
+/* ---------------- [NEW FEATURE 3] Telegram Native Share Button ---------------- */
+
+function shareToTelegram(title, price, location) {
+  const shareText = `🔥 **MTU Campus Marketplace**\n\n📌 **Item:** ${title}\n💰 **Price:** ${etb(price)}\n📍 **Location:** ${location}\n\n👉 * Check it out on MTU Campus App!*`;
+  
+  if (tg && tg.openTelegramLink) {
+    tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(shareText)}`);
+  } else {
+    window.open(`https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(shareText)}`, '_blank');
+  }
+}
+
 /* ---------------- Notification System ---------------- */
 
 function addNotification(title, message, iconName = 'bell', iconColor = 'emerald') {
@@ -192,7 +255,6 @@ function updateNotifUI() {
 
 /* ---------------- Firestore Status & Delete Functions ---------------- */
 
-// [NEW ADDITION] Toggle Product Status (Available <-> Sold)
 async function toggleProductStatus(id, currentStatus) {
   const newStatus = currentStatus === "sold" ? "available" : "sold";
   try {
@@ -238,7 +300,12 @@ async function deleteLostFound(id) {
 
 /* ---------------- Contact Modal Wireup ---------------- */
 
-function openContactModal({ name, title, location, phone, telegram }) {
+function openContactModal({ id, name, title, location, phone, telegram }) {
+  // Increment View Count when contact modal is triggered
+  if (id) {
+    incrementViews(id);
+  }
+
   const nameEl = document.getElementById("contactName");
   const metaEl = document.getElementById("contactMeta");
 
@@ -253,7 +320,7 @@ function openContactModal({ name, title, location, phone, telegram }) {
     const tgHref = cleanTg ? `https://t.me/${cleanTg}` : "#";
 
     modalContainer.innerHTML = `
-      <!-- [NEW ADDITION] Safety Tip Banner -->
+      <!-- Safety Tip Banner -->
       <div class="col-span-2 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-[11px] text-amber-300 flex items-center gap-2 mb-1">
         <i data-lucide="shield-alert" class="w-4 h-4 shrink-0 text-amber-400"></i>
         <span>እቃውን ሳያዩ እና በአካል ሳይገናኙ ምንም አይነት ክፍያ እንዳይፈጽሙ!</span>
@@ -342,6 +409,11 @@ function renderProductGrid() {
   const grid = document.getElementById("productGrid");
   if (!grid) return;
 
+  if (isLoadingProducts) {
+    renderSkeletonLoaders();
+    return;
+  }
+
   const q = state.search.trim().toLowerCase();
 
   const filtered = PRODUCTS.filter((p) => {
@@ -380,7 +452,7 @@ function renderProductGrid() {
       const isOwner = p.userId && String(p.userId) === String(currentUserId);
       const canManage = isAdmin || isOwner;
 
-      // [NEW ADDITION] Owner Actions (Mark as Sold Button + Delete Button)
+      // Owner Actions (Mark as Sold + Delete Button)
       const ownerActionsHTML = canManage ? `
         <div class="absolute top-2 right-2 z-10 flex gap-1">
           <button onclick="toggleProductStatus('${p.id}', '${p.status || 'available'}')" class="px-2 py-1 rounded-lg text-[10px] font-bold ${isSold ? 'bg-emerald text-base-950' : 'bg-amber-500 text-slate-950'} shadow-lg">
@@ -392,12 +464,16 @@ function renderProductGrid() {
         </div>
       ` : '';
 
-      // [NEW ADDITION] Sold Out Badge Overlay
+      // Sold Out Badge Overlay
       const soldBadgeHTML = isSold ? `
         <span class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 bg-red-600 text-white font-bold text-xs uppercase tracking-widest px-3 py-1 rounded-full shadow-lg border border-white/20">
           SOLD OUT
         </span>
       ` : '';
+
+      // Safe Strings for Share Link
+      const safeTitle = (p.title || "").replace(/'/g, "\\'");
+      const safeLoc = (p.location || "").replace(/'/g, "\\'");
 
       return `
     <div class="group rounded-2xl overflow-hidden glass shadow-glow flex flex-col relative ${isSold ? 'border-red-500/30' : ''}">
@@ -408,10 +484,22 @@ function renderProductGrid() {
         <span class="absolute top-2 left-2 text-[9px] font-semibold uppercase tracking-wide bg-black/60 text-white px-2 py-0.5 rounded-md backdrop-blur-md">
           ${p.category}
         </span>
+        <!-- Telegram Share Button Overlay -->
+        <button onclick="shareToTelegram('${safeTitle}', ${p.price}, '${safeLoc}')" class="absolute bottom-2 right-2 z-10 w-7 h-7 rounded-full bg-black/60 text-slate-200 hover:text-white backdrop-blur-md flex items-center justify-center">
+          <i data-lucide="share-2" class="w-3.5 h-3.5"></i>
+        </button>
       </div>
       <div class="p-3 flex flex-col gap-1 flex-1">
         <p class="text-xs font-semibold leading-snug line-clamp-2 min-h-[2rem] text-slate-100">${p.title}</p>
-        <p class="font-display font-bold text-sm text-emerald-soft">${etb(p.price)}</p>
+        
+        <div class="flex items-center justify-between mt-0.5">
+          <p class="font-display font-bold text-sm text-emerald-soft">${etb(p.price)}</p>
+          <!-- View Counter Display -->
+          <span class="text-[10px] text-slate-400 flex items-center gap-1 bg-base-800/80 px-1.5 py-0.5 rounded-md">
+            <i data-lucide="eye" class="w-3 h-3 text-slate-500"></i> ${p.views || 0}
+          </span>
+        </div>
+
         <div class="text-[10.5px] text-slate-400 flex flex-col gap-0.5 mt-1">
           <span class="flex items-center gap-1">
             <i data-lucide="map-pin" class="w-3 h-3 text-slate-500"></i> ${p.location}
@@ -436,6 +524,7 @@ function renderProductGrid() {
       const p = PRODUCTS.find((x) => String(x.id) === id);
       if (p) {
         openContactModal({
+          id: p.id,
           name: p.seller,
           title: p.title,
           location: p.location,
@@ -688,7 +777,8 @@ if (postItemForm) {
       seller,
       phone,
       telegram,
-      status: "available", // [NEW ADDITION] Default status
+      views: 0, // Initial views
+      status: "available",
       userId: String(currentUserId),
       image: uploadedBase64Image,
       emoji: category === "Books" ? "📘" : category === "Clothing" ? "👕" : "📱",
