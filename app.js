@@ -20,16 +20,27 @@ if (!firebase.apps.length) {
 }
 const db = firebase.firestore();
 
-// ---------------- Telegram WebApp Initialization ----------------
+// ---------------- Telegram WebApp & User ID Setup ----------------
 const tg = window.Telegram?.WebApp;
 if (tg) {
   tg.ready();
   tg.expand();
 }
 
-// Current User Telegram ID (ባለቤቱን ለመለየት)
-const currentUser = tg?.initDataUnsafe?.user;
-const currentUserId = currentUser ? currentUser.id : null;
+// Telegram ID ከሌለ በብራውዘር ደረጃ ቋሚ Device ID መፍጠር
+function getOrCreateDeviceId() {
+  let deviceId = localStorage.getItem("mtu_device_id");
+  if (!deviceId) {
+    deviceId = "dev_" + Math.random().toString(36).substring(2, 9) + "_" + Date.now();
+    localStorage.setItem("mtu_device_id", deviceId);
+  }
+  return deviceId;
+}
+
+// ባለቤቱን ለመለየት የሚጠቅም ID (የቴሌግራም ID ካለ እሱን፣ ከሌለ የብራውዘሩን Device ID ይጠቀማል)
+const currentUserId = tg?.initDataUnsafe?.user?.id 
+  ? String(tg.initDataUnsafe.user.id) 
+  : getOrCreateDeviceId();
 
 /* ---------------- Real-time State & Local Data ---------------- */
 
@@ -333,10 +344,10 @@ function renderProductGrid() {
             <span>${p.emoji || "📦"}</span>
            </div>`;
 
-      // ፖስቱ የራሱ ከሆነ ብቻ የ Delete button ይሳያል
-      const isOwner = currentUserId && (String(p.userId) === String(currentUserId));
+      // string ንፅፅር በማድረግ የፖስቱ ባለቤት መሆኑን ማረጋገጥ
+      const isOwner = p.userId && String(p.userId) === String(currentUserId);
       const deleteBtnHTML = isOwner ? `
-        <button onclick="deleteProduct('${p.id}')" class="absolute top-2 right-2 z-10 w-6 h-6 rounded-full bg-black/60 text-slate-300 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all">
+        <button onclick="deleteProduct('${p.id}')" class="absolute top-2 right-2 z-10 w-7 h-7 rounded-full bg-red-500/80 text-white flex items-center justify-center shadow-lg hover:bg-red-600 transition-all">
           <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
         </button>
       ` : '';
@@ -412,10 +423,10 @@ function renderErrandFeed() {
 
   wrap.innerHTML = ERRANDS.map(
     (e) => {
-      const isOwner = currentUserId && (String(e.userId) === String(currentUserId));
+      const isOwner = e.userId && String(e.userId) === String(currentUserId);
       const deleteBtnHTML = isOwner ? `
-        <button onclick="deleteErrand('${e.id}')" class="absolute top-3 right-3 text-slate-500 hover:text-red-400">
-          <i data-lucide="x" class="w-4 h-4"></i>
+        <button onclick="deleteErrand('${e.id}')" class="absolute top-3 right-3 text-red-400 hover:text-red-300 p-1">
+          <i data-lucide="trash-2" class="w-4 h-4"></i>
         </button>
       ` : '';
 
@@ -424,7 +435,7 @@ function renderErrandFeed() {
       <div class="w-10 h-10 rounded-xl bg-emerald/15 border border-emerald/25 flex items-center justify-center shrink-0">
         <i data-lucide="package" class="w-4 h-4 text-emerald-soft"></i>
       </div>
-      <div class="flex-1 min-w-0 pr-6">
+      <div class="flex-1 min-w-0 pr-8">
         <div class="flex items-start justify-between gap-2">
           <p class="text-sm font-semibold leading-snug text-slate-100">${e.item}</p>
           ${e.urgent ? '<span class="shrink-0 text-[9px] font-bold uppercase tracking-wide text-amber-300 bg-amber-500/10 border border-amber-400/30 px-1.5 py-0.5 rounded-md">Urgent</span>' : ""}
@@ -483,17 +494,17 @@ function renderLostFound() {
         ? `<img src="${i.image}" class="w-12 h-12 rounded-xl object-cover">`
         : `<div class="w-12 h-12 rounded-2xl bg-base-700 flex items-center justify-center text-xl shrink-0">${i.emoji || "📦"}</div>`;
 
-      const isOwner = currentUserId && (String(i.userId) === String(currentUserId));
+      const isOwner = i.userId && String(i.userId) === String(currentUserId);
       const deleteBtnHTML = isOwner ? `
-        <button onclick="deleteLostFound('${i.id}')" class="absolute top-3 right-3 text-slate-500 hover:text-red-400">
-          <i data-lucide="x" class="w-4 h-4"></i>
+        <button onclick="deleteLostFound('${i.id}')" class="absolute top-3 right-3 text-red-400 hover:text-red-300 p-1">
+          <i data-lucide="trash-2" class="w-4 h-4"></i>
         </button>
       ` : '';
 
       return `
     <div class="glass rounded-2xl p-4 shadow-glow flex items-center gap-3 relative">
       ${mediaHTML}
-      <div class="flex-1 min-w-0 pr-6">
+      <div class="flex-1 min-w-0 pr-8">
         <div class="flex items-center gap-2">
           <p class="text-sm font-semibold leading-snug truncate text-slate-100">${i.item}</p>
           <span class="shrink-0 text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-md ${
@@ -586,8 +597,8 @@ if (dropzone && imageInput) {
       reader.onload = (event) => {
         uploadedBase64Image = event.target.result;
         if (previewImg) {
-          previewImg.src = uploadedBase64Image;
           previewImg.classList.remove("hidden");
+          previewImg.src = uploadedBase64Image;
         }
         if (placeholder) {
           placeholder.classList.add("hidden");
@@ -600,7 +611,7 @@ if (dropzone && imageInput) {
 
 /* ---------------- Firestore Submissions & Real-time Writes ---------------- */
 
-// 1. Post Marketplace Item Form -> Saves directly to Firestore
+// 1. Post Marketplace Item Form
 const postItemForm = document.getElementById("postItemForm");
 if (postItemForm) {
   postItemForm.addEventListener("submit", async (e) => {
@@ -623,7 +634,7 @@ if (postItemForm) {
       seller,
       phone,
       telegram,
-      userId: currentUserId, // ፖስቱን የለቀቀው ሰው Telegram User ID
+      userId: String(currentUserId), // ቋሚ string አድርጎ ማስቀመጥ
       image: uploadedBase64Image,
       emoji: category === "Books" ? "📘" : category === "Clothing" ? "👕" : "📱",
       color: COLOR_GRADIENTS[Math.floor(Math.random() * COLOR_GRADIENTS.length)],
@@ -653,7 +664,7 @@ if (postItemForm) {
   });
 }
 
-// 2. Errand Request Form -> Saves directly to Firestore
+// 2. Errand Request Form
 const errandForm = document.getElementById("errandForm");
 if (errandForm) {
   errandForm.addEventListener("submit", async (e) => {
@@ -672,7 +683,7 @@ if (errandForm) {
       tip,
       phone,
       telegram,
-      userId: currentUserId, // ፖስቱን የለቀቀው ሰው Telegram User ID
+      userId: String(currentUserId),
       requester: tg?.initDataUnsafe?.user?.first_name || "Campus Student",
       time: "Just now",
       urgent: false,
@@ -711,7 +722,7 @@ document.querySelectorAll(".report-status-btn").forEach((btn) => {
   });
 });
 
-// 4. Lost & Found Form -> Saves directly to Firestore
+// 4. Lost & Found Form
 const reportForm = document.getElementById("reportForm");
 if (reportForm) {
   reportForm.addEventListener("submit", async (e) => {
@@ -731,7 +742,7 @@ if (reportForm) {
       location,
       phone,
       telegram,
-      userId: currentUserId, // ፖስቱን የለቀቀው ሰው Telegram User ID
+      userId: String(currentUserId),
       reporter: tg?.initDataUnsafe?.user?.first_name || "Campus Student",
       date: "Today",
       emoji: currentStatus === "found" ? "📦" : "🔍",
@@ -791,7 +802,6 @@ function init() {
   setTab("marketplace");
   refreshIcons();
 
-  // Real-time Firestore ማዳመጫውን ማስጀመር
   listenToFirestore();
 }
 
