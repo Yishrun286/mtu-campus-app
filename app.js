@@ -27,6 +27,10 @@ if (tg) {
   tg.expand();
 }
 
+// Current User Telegram ID (ባለቤቱን ለመለየት)
+const currentUser = tg?.initDataUnsafe?.user;
+const currentUserId = currentUser ? currentUser.id : null;
+
 /* ---------------- Real-time State & Local Data ---------------- */
 
 let PRODUCTS = [];
@@ -329,11 +333,17 @@ function renderProductGrid() {
             <span>${p.emoji || "📦"}</span>
            </div>`;
 
+      // ፖስቱ የራሱ ከሆነ ብቻ የ Delete button ይሳያል
+      const isOwner = currentUserId && (String(p.userId) === String(currentUserId));
+      const deleteBtnHTML = isOwner ? `
+        <button onclick="deleteProduct('${p.id}')" class="absolute top-2 right-2 z-10 w-6 h-6 rounded-full bg-black/60 text-slate-300 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all">
+          <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+        </button>
+      ` : '';
+
       return `
     <div class="group rounded-2xl overflow-hidden glass shadow-glow flex flex-col relative">
-      <button onclick="deleteProduct('${p.id}')" class="absolute top-2 right-2 z-10 w-6 h-6 rounded-full bg-black/60 text-slate-300 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all">
-        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-      </button>
+      ${deleteBtnHTML}
       <div class="h-28 relative overflow-hidden bg-base-800">
         ${mediaHTML}
         <span class="absolute top-2 left-2 text-[9px] font-semibold uppercase tracking-wide bg-black/60 text-white px-2 py-0.5 rounded-md backdrop-blur-md">
@@ -401,7 +411,15 @@ function renderErrandFeed() {
   }
 
   wrap.innerHTML = ERRANDS.map(
-    (e) => `
+    (e) => {
+      const isOwner = currentUserId && (String(e.userId) === String(currentUserId));
+      const deleteBtnHTML = isOwner ? `
+        <button onclick="deleteErrand('${e.id}')" class="absolute top-3 right-3 text-slate-500 hover:text-red-400">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      ` : '';
+
+      return `
     <div class="glass rounded-2xl p-4 shadow-glow flex items-start gap-3 relative">
       <div class="w-10 h-10 rounded-xl bg-emerald/15 border border-emerald/25 flex items-center justify-center shrink-0">
         <i data-lucide="package" class="w-4 h-4 text-emerald-soft"></i>
@@ -421,10 +439,9 @@ function renderErrandFeed() {
           </button>
         </div>
       </div>
-      <button onclick="deleteErrand('${e.id}')" class="absolute top-3 right-3 text-slate-500 hover:text-red-400">
-        <i data-lucide="x" class="w-4 h-4"></i>
-      </button>
-    </div>`
+      ${deleteBtnHTML}
+    </div>`;
+    }
   ).join("");
 
   wrap.querySelectorAll("[data-errand]").forEach((btn) => {
@@ -466,6 +483,13 @@ function renderLostFound() {
         ? `<img src="${i.image}" class="w-12 h-12 rounded-xl object-cover">`
         : `<div class="w-12 h-12 rounded-2xl bg-base-700 flex items-center justify-center text-xl shrink-0">${i.emoji || "📦"}</div>`;
 
+      const isOwner = currentUserId && (String(i.userId) === String(currentUserId));
+      const deleteBtnHTML = isOwner ? `
+        <button onclick="deleteLostFound('${i.id}')" class="absolute top-3 right-3 text-slate-500 hover:text-red-400">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      ` : '';
+
       return `
     <div class="glass rounded-2xl p-4 shadow-glow flex items-center gap-3 relative">
       ${mediaHTML}
@@ -485,9 +509,7 @@ function renderLostFound() {
       <button data-claim="${i.id}" class="tap shrink-0 bg-indigo/15 border border-indigo/30 text-indigo-soft text-[11px] font-semibold px-3 py-2 rounded-lg">
         Claim / Contact
       </button>
-      <button onclick="deleteLostFound('${i.id}')" class="absolute top-3 right-3 text-slate-500 hover:text-red-400">
-        <i data-lucide="x" class="w-4 h-4"></i>
-      </button>
+      ${deleteBtnHTML}
     </div>`;
     })
     .join("");
@@ -601,6 +623,7 @@ if (postItemForm) {
       seller,
       phone,
       telegram,
+      userId: currentUserId, // ፖስቱን የለቀቀው ሰው Telegram User ID
       image: uploadedBase64Image,
       emoji: category === "Books" ? "📘" : category === "Clothing" ? "👕" : "📱",
       color: COLOR_GRADIENTS[Math.floor(Math.random() * COLOR_GRADIENTS.length)],
@@ -649,6 +672,7 @@ if (errandForm) {
       tip,
       phone,
       telegram,
+      userId: currentUserId, // ፖስቱን የለቀቀው ሰው Telegram User ID
       requester: tg?.initDataUnsafe?.user?.first_name || "Campus Student",
       time: "Just now",
       urgent: false,
@@ -707,6 +731,7 @@ if (reportForm) {
       location,
       phone,
       telegram,
+      userId: currentUserId, // ፖስቱን የለቀቀው ሰው Telegram User ID
       reporter: tg?.initDataUnsafe?.user?.first_name || "Campus Student",
       date: "Today",
       emoji: currentStatus === "found" ? "📦" : "🔍",
