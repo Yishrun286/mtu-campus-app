@@ -69,51 +69,36 @@ let state = {
   reportStatus: "lost"
 };
 
-/* ---------------- Real-time Firestore Listeners ---------------- */
+/* ---------------- Real-time Firestore Listeners (With Expiration Filter) ---------------- */
 
 function listenToFirestore() {
+  const fourteenDaysAgo = firebase.firestore.Timestamp.fromDate(
+    new Date(Date.now() - 14 * 24 * 60 * 60 * 1000)
+  );
+
   // 1. Real-time Products Sync
   db.collection("products")
-    .orderBy("createdAt", "desc")
+    .where("createdAt", ">=", fourteenDaysAgo)
     .onSnapshot((snapshot) => {
       PRODUCTS = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       renderProductGrid();
-    }, (err) => {
-      console.error("Products listener error:", err);
-      // Index መዘግየት ካጋጠመ ያለ orderBy እንዲያነብ fallback
-      db.collection("products").onSnapshot((snapshot) => {
-        PRODUCTS = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        renderProductGrid();
-      });
-    });
+    }, (err) => console.error("Products listener error:", err));
 
   // 2. Real-time Errands Sync
   db.collection("errands")
-    .orderBy("createdAt", "desc")
+    .where("createdAt", ">=", fourteenDaysAgo)
     .onSnapshot((snapshot) => {
       ERRANDS = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       renderErrandFeed();
-    }, (err) => {
-      console.error("Errands listener error:", err);
-      db.collection("errands").onSnapshot((snapshot) => {
-        ERRANDS = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        renderErrandFeed();
-      });
-    });
+    }, (err) => console.error("Errands listener error:", err));
 
   // 3. Real-time Lost & Found Sync
   db.collection("lostfound")
-    .orderBy("createdAt", "desc")
+    .where("createdAt", ">=", fourteenDaysAgo)
     .onSnapshot((snapshot) => {
       LOSTFOUND = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       renderLostFound();
-    }, (err) => {
-      console.error("LostFound listener error:", err);
-      db.collection("lostfound").onSnapshot((snapshot) => {
-        LOSTFOUND = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        renderLostFound();
-      });
-    });
+    }, (err) => console.error("LostFound listener error:", err));
 }
 
 /* ---------------- Form Helper & Utilities ---------------- */
@@ -205,7 +190,18 @@ function updateNotifUI() {
   refreshIcons();
 }
 
-/* ---------------- Firestore Delete Functions ---------------- */
+/* ---------------- Firestore Status & Delete Functions ---------------- */
+
+// [NEW ADDITION] Toggle Product Status (Available <-> Sold)
+async function toggleProductStatus(id, currentStatus) {
+  const newStatus = currentStatus === "sold" ? "available" : "sold";
+  try {
+    await db.collection("products").doc(String(id)).update({ status: newStatus });
+    showToast(newStatus === "sold" ? "Item marked as Sold!" : "Item marked as Available");
+  } catch (err) {
+    showToast("Error updating status");
+  }
+}
 
 async function deleteProduct(id) {
   if (confirm("Are you sure you want to remove this item?")) {
@@ -257,6 +253,12 @@ function openContactModal({ name, title, location, phone, telegram }) {
     const tgHref = cleanTg ? `https://t.me/${cleanTg}` : "#";
 
     modalContainer.innerHTML = `
+      <!-- [NEW ADDITION] Safety Tip Banner -->
+      <div class="col-span-2 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-[11px] text-amber-300 flex items-center gap-2 mb-1">
+        <i data-lucide="shield-alert" class="w-4 h-4 shrink-0 text-amber-400"></i>
+        <span>እቃውን ሳያዩ እና በአካል ሳይገናኙ ምንም አይነት ክፍያ እንዳይፈጽሙ!</span>
+      </div>
+
       <a href="${phoneHref}" ${!cleanPhone ? 'onclick="alert(\'No phone number provided\'); return false;"' : ''} class="tap flex items-center justify-center gap-2 bg-emerald text-base-950 font-semibold text-sm py-3 rounded-xl text-center">
         <i data-lucide="phone" class="w-4 h-4"></i> Call (${cleanPhone || 'N/A'})
       </a>
@@ -367,25 +369,41 @@ function renderProductGrid() {
 
   grid.innerHTML = filtered
     .map((p) => {
+      const isSold = p.status === "sold";
+      
       const mediaHTML = p.image
-        ? `<img src="${p.image}" alt="${p.title}" class="w-full h-full object-cover">`
-        : `<div class="w-full h-full bg-gradient-to-br ${p.color || "from-indigo to-emerald"} flex items-center justify-center text-3xl">
+        ? `<img src="${p.image}" alt="${p.title}" class="w-full h-full object-cover ${isSold ? 'opacity-40 grayscale' : ''}">`
+        : `<div class="w-full h-full bg-gradient-to-br ${p.color || "from-indigo to-emerald"} flex items-center justify-center text-3xl ${isSold ? 'opacity-40' : ''}">
             <span>${p.emoji || "📦"}</span>
            </div>`;
 
       const isOwner = p.userId && String(p.userId) === String(currentUserId);
-      const canDelete = isAdmin || isOwner;
+      const canManage = isAdmin || isOwner;
 
-      const deleteBtnHTML = canDelete ? `
-        <button onclick="deleteProduct('${p.id}')" class="absolute top-2 right-2 z-10 w-7 h-7 rounded-full bg-red-500/80 text-white flex items-center justify-center shadow-lg hover:bg-red-600 transition-all">
-          <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-        </button>
+      // [NEW ADDITION] Owner Actions (Mark as Sold Button + Delete Button)
+      const ownerActionsHTML = canManage ? `
+        <div class="absolute top-2 right-2 z-10 flex gap-1">
+          <button onclick="toggleProductStatus('${p.id}', '${p.status || 'available'}')" class="px-2 py-1 rounded-lg text-[10px] font-bold ${isSold ? 'bg-emerald text-base-950' : 'bg-amber-500 text-slate-950'} shadow-lg">
+            ${isSold ? 'Available' : 'Sold'}
+          </button>
+          <button onclick="deleteProduct('${p.id}')" class="w-7 h-7 rounded-lg bg-red-500/80 text-white flex items-center justify-center shadow-lg hover:bg-red-600 transition-all">
+            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+          </button>
+        </div>
+      ` : '';
+
+      // [NEW ADDITION] Sold Out Badge Overlay
+      const soldBadgeHTML = isSold ? `
+        <span class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 bg-red-600 text-white font-bold text-xs uppercase tracking-widest px-3 py-1 rounded-full shadow-lg border border-white/20">
+          SOLD OUT
+        </span>
       ` : '';
 
       return `
-    <div class="group rounded-2xl overflow-hidden glass shadow-glow flex flex-col relative">
-      ${deleteBtnHTML}
+    <div class="group rounded-2xl overflow-hidden glass shadow-glow flex flex-col relative ${isSold ? 'border-red-500/30' : ''}">
+      ${ownerActionsHTML}
       <div class="h-28 relative overflow-hidden bg-base-800">
+        ${soldBadgeHTML}
         ${mediaHTML}
         <span class="absolute top-2 left-2 text-[9px] font-semibold uppercase tracking-wide bg-black/60 text-white px-2 py-0.5 rounded-md backdrop-blur-md">
           ${p.category}
@@ -402,9 +420,11 @@ function renderProductGrid() {
             <i data-lucide="user" class="w-3 h-3 text-slate-500"></i> Seller: <strong class="text-slate-300 font-normal">${p.seller}</strong>
           </span>
         </div>
-        <button data-contact="product-${p.id}" class="tap mt-2 w-full bg-indigo/20 border border-indigo/40 text-indigo-soft hover:bg-indigo/30 text-[11px] font-semibold py-2 rounded-lg transition-all">
-          Contact Seller
-        </button>
+        ${
+          isSold 
+            ? `<button disabled class="mt-2 w-full bg-base-800 text-slate-500 text-[11px] font-semibold py-2 rounded-lg cursor-not-allowed">Item Sold Out</button>`
+            : `<button data-contact="product-${p.id}" class="tap mt-2 w-full bg-indigo/20 border border-indigo/40 text-indigo-soft hover:bg-indigo/30 text-[11px] font-semibold py-2 rounded-lg transition-all">Contact Seller</button>`
+        }
       </div>
     </div>`;
     })
@@ -668,6 +688,7 @@ if (postItemForm) {
       seller,
       phone,
       telegram,
+      status: "available", // [NEW ADDITION] Default status
       userId: String(currentUserId),
       image: uploadedBase64Image,
       emoji: category === "Books" ? "📘" : category === "Clothing" ? "👕" : "📱",
