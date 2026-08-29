@@ -1,7 +1,24 @@
 /* ============================================================
-   MTU Campus — Production Logic with GitHub Sync & Telegram SDK
+   MTU Campus — Firebase Production Logic & Real-time Sync
    Tabs: Marketplace · Campus Express & Emergency · Lost & Found
    ============================================================ */
+
+// ---------------- Firebase Configuration & Init ----------------
+const firebaseConfig = {
+  apiKey: "AIzaSyD8jDygdJuOvRc2enSsF2Sw3MLEymTSA9c",
+  authDomain: "campus-app-fda0d.firebaseapp.com",
+  projectId: "campus-app-fda0d",
+  storageBucket: "campus-app-fda0d.firebasestorage.app",
+  messagingSenderId: "729669684373",
+  appId: "1:729669684373:web:ca9cb8d562b789ed1b1f9c",
+  measurementId: "G-5MX45YW60L"
+};
+
+// Initialize Firebase & Firestore
+if (!firebase.apps.length) {
+  firebase.initializeApp(firebaseConfig);
+}
+const db = firebase.firestore();
 
 // ---------------- Telegram WebApp Initialization ----------------
 const tg = window.Telegram?.WebApp;
@@ -10,27 +27,11 @@ if (tg) {
   tg.expand();
 }
 
-/* ---------------- Sample & GitHub Data Storage ---------------- */
+/* ---------------- Real-time State & Local Data ---------------- */
 
-const GITHUB_RAW_URL = "https://raw.githubusercontent.com/yishrun286/mtu-campus-app/main/listings.json";
-
-const INITIAL_PRODUCTS = [
-  { id: 1, title: "TI-84 Plus Calculator", price: 1450, category: "Electronics", location: "Block 6", seller: "Hana T.", phone: "0911223344", telegram: "hana_t", image: null, emoji: "🧮", color: "from-indigo to-indigo-soft" },
-  { id: 2, title: "Intro to Thermodynamics (4th Ed)", price: 350, category: "Books", location: "Girls' Dorm 2", seller: "Selam A.", phone: "0922334455", telegram: "selam_a", image: null, emoji: "📘", color: "from-emerald to-emerald-soft" }
-];
-
-const INITIAL_ERRANDS = [
-  { id: 101, item: "Lunch pickup from Cafeteria 2", dorm: "Block 7, Room 214", tip: 25, requester: "Liya M.", phone: "0911223344", telegram: "liya_m", time: "5 min ago", urgent: false }
-];
-
-const INITIAL_LOSTFOUND = [
-  { id: 201, status: "lost", item: "Black North Face Backpack", location: "Near Library Entrance", date: "Aug 15", reporter: "Abebe B.", phone: "0933445566", telegram: "abe_b", emoji: "🎒", image: null }
-];
-
-// Local Storage Fallbacks
-let PRODUCTS = JSON.parse(localStorage.getItem("mtu_products")) || INITIAL_PRODUCTS;
-let ERRANDS = JSON.parse(localStorage.getItem("mtu_errands")) || INITIAL_ERRANDS;
-let LOSTFOUND = JSON.parse(localStorage.getItem("mtu_lostfound")) || INITIAL_LOSTFOUND;
+let PRODUCTS = [];
+let ERRANDS = [];
+let LOSTFOUND = [];
 let notifications = JSON.parse(localStorage.getItem("mtu_notifications")) || [];
 
 const CATEGORIES = ["All", "Electronics", "Books", "Clothing"];
@@ -49,22 +50,26 @@ let state = {
   reportStatus: "lost"
 };
 
-/* ---------------- GitHub Data Sync (Buyer Side) ---------------- */
+/* ---------------- Real-time Firestore Listeners ---------------- */
 
-async function syncWithGitHub() {
-  try {
-    const response = await fetch(GITHUB_RAW_URL);
-    if (response.ok) {
-      const cloudProducts = await response.json();
-      if (Array.isArray(cloudProducts) && cloudProducts.length > 0) {
-        PRODUCTS = cloudProducts;
-        localStorage.setItem("mtu_products", JSON.stringify(PRODUCTS));
-        renderProductGrid();
-      }
-    }
-  } catch (err) {
-    console.log("GitHub data fetch failed, using cached LocalStorage data.", err);
-  }
+function listenToFirestore() {
+  // 1. Real-time Products Sync
+  db.collection("products").onSnapshot((snapshot) => {
+    PRODUCTS = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    renderProductGrid();
+  }, (err) => console.error("Products listener error:", err));
+
+  // 2. Real-time Errands Sync
+  db.collection("errands").onSnapshot((snapshot) => {
+    ERRANDS = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    renderErrandFeed();
+  }, (err) => console.error("Errands listener error:", err));
+
+  // 3. Real-time Lost & Found Sync
+  db.collection("lostfound").onSnapshot((snapshot) => {
+    LOSTFOUND = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    renderLostFound();
+  }, (err) => console.error("LostFound listener error:", err));
 }
 
 /* ---------------- Form Helper & Utilities ---------------- */
@@ -156,32 +161,38 @@ function updateNotifUI() {
   refreshIcons();
 }
 
-/* ---------------- Delete Functions ---------------- */
+/* ---------------- Firestore Delete Functions ---------------- */
 
-function deleteProduct(id) {
+async function deleteProduct(id) {
   if (confirm("Are you sure you want to remove this item?")) {
-    PRODUCTS = PRODUCTS.filter((p) => p.id !== id);
-    localStorage.setItem("mtu_products", JSON.stringify(PRODUCTS));
-    renderProductGrid();
-    showToast("Item deleted!");
+    try {
+      await db.collection("products").doc(String(id)).delete();
+      showToast("Item deleted!");
+    } catch (err) {
+      showToast("Error deleting item");
+    }
   }
 }
 
-function deleteErrand(id) {
+async function deleteErrand(id) {
   if (confirm("Mark this errand as completed / remove?")) {
-    ERRANDS = ERRANDS.filter((e) => e.id !== id);
-    localStorage.setItem("mtu_errands", JSON.stringify(ERRANDS));
-    renderErrandFeed();
-    showToast("Errand removed!");
+    try {
+      await db.collection("errands").doc(String(id)).delete();
+      showToast("Errand removed!");
+    } catch (err) {
+      showToast("Error removing errand");
+    }
   }
 }
 
-function deleteLostFound(id) {
+async function deleteLostFound(id) {
   if (confirm("Remove this report from Lost & Found?")) {
-    LOSTFOUND = LOSTFOUND.filter((i) => i.id !== id);
-    localStorage.setItem("mtu_lostfound", JSON.stringify(LOSTFOUND));
-    renderLostFound();
-    showToast("Report removed!");
+    try {
+      await db.collection("lostfound").doc(String(id)).delete();
+      showToast("Report removed!");
+    } catch (err) {
+      showToast("Error removing report");
+    }
   }
 }
 
@@ -291,7 +302,7 @@ function renderProductGrid() {
     const matchesCat = state.category === "All" || p.category === state.category;
     const matchesSearch =
       !q ||
-      p.title.toLowerCase().includes(q) ||
+      (p.title && p.title.toLowerCase().includes(q)) ||
       (p.seller && p.seller.toLowerCase().includes(q)) ||
       (p.location && p.location.toLowerCase().includes(q));
     return matchesCat && matchesSearch;
@@ -320,7 +331,7 @@ function renderProductGrid() {
 
       return `
     <div class="group rounded-2xl overflow-hidden glass shadow-glow flex flex-col relative">
-      <button onclick="deleteProduct(${p.id})" class="absolute top-2 right-2 z-10 w-6 h-6 rounded-full bg-black/60 text-slate-300 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all">
+      <button onclick="deleteProduct('${p.id}')" class="absolute top-2 right-2 z-10 w-6 h-6 rounded-full bg-black/60 text-slate-300 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all">
         <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
       </button>
       <div class="h-28 relative overflow-hidden bg-base-800">
@@ -350,8 +361,8 @@ function renderProductGrid() {
 
   grid.querySelectorAll("[data-contact]").forEach((btn) => {
     btn.addEventListener("click", () => {
-      const id = Number(btn.dataset.contact.split("-")[1]);
-      const p = PRODUCTS.find((x) => x.id === id);
+      const id = btn.dataset.contact.replace("product-", "");
+      const p = PRODUCTS.find((x) => String(x.id) === id);
       if (p) {
         openContactModal({
           name: p.seller,
@@ -410,7 +421,7 @@ function renderErrandFeed() {
           </button>
         </div>
       </div>
-      <button onclick="deleteErrand(${e.id})" class="absolute top-3 right-3 text-slate-500 hover:text-red-400">
+      <button onclick="deleteErrand('${e.id}')" class="absolute top-3 right-3 text-slate-500 hover:text-red-400">
         <i data-lucide="x" class="w-4 h-4"></i>
       </button>
     </div>`
@@ -418,8 +429,8 @@ function renderErrandFeed() {
 
   wrap.querySelectorAll("[data-errand]").forEach((btn) => {
     btn.addEventListener("click", () => {
-      const id = Number(btn.dataset.errand);
-      const e = ERRANDS.find((x) => x.id === id);
+      const id = btn.dataset.errand;
+      const e = ERRANDS.find((x) => String(x.id) === id);
       if (e) {
         openContactModal({
           name: e.requester || "Requester",
@@ -474,7 +485,7 @@ function renderLostFound() {
       <button data-claim="${i.id}" class="tap shrink-0 bg-indigo/15 border border-indigo/30 text-indigo-soft text-[11px] font-semibold px-3 py-2 rounded-lg">
         Claim / Contact
       </button>
-      <button onclick="deleteLostFound(${i.id})" class="absolute top-3 right-3 text-slate-500 hover:text-red-400">
+      <button onclick="deleteLostFound('${i.id}')" class="absolute top-3 right-3 text-slate-500 hover:text-red-400">
         <i data-lucide="x" class="w-4 h-4"></i>
       </button>
     </div>`;
@@ -483,8 +494,8 @@ function renderLostFound() {
 
   wrap.querySelectorAll("[data-claim]").forEach((btn) => {
     btn.addEventListener("click", () => {
-      const id = Number(btn.dataset.claim);
-      const i = LOSTFOUND.find((x) => x.id === id);
+      const id = btn.dataset.claim;
+      const i = LOSTFOUND.find((x) => String(x.id) === id);
       if (i) {
         openContactModal({
           name: i.reporter || "Owner / Finder",
@@ -536,16 +547,6 @@ function updateLFFilterUI(allBtns, activeBtn) {
 
 /* ---------------- Image Helper ---------------- */
 
-function readImageFile(file) {
-  return new Promise((resolve) => {
-    if (!file) resolve(null);
-    const reader = new FileReader();
-    reader.onload = (e) => resolve(e.target.result);
-    reader.onerror = () => resolve(null);
-    reader.readAsDataURL(file);
-  });
-}
-
 const dropzone = document.getElementById("photoDropzone");
 const imageInput = document.getElementById("itemImageInput");
 const previewImg = document.getElementById("photoPreview");
@@ -575,9 +576,9 @@ if (dropzone && imageInput) {
   });
 }
 
-/* ---------------- Form Submissions + Telegram WebApp SDK Data Send ---------------- */
+/* ---------------- Firestore Submissions & Real-time Writes ---------------- */
 
-// 1. Post Marketplace Item Form
+// 1. Post Marketplace Item Form -> Saves directly to Firestore
 const postItemForm = document.getElementById("postItemForm");
 if (postItemForm) {
   postItemForm.addEventListener("submit", async (e) => {
@@ -593,7 +594,6 @@ if (postItemForm) {
     const telegram = tg?.initDataUnsafe?.user?.username || extractInputValue(form, ['[name="telegram"]', '#itemTelegram'], "");
 
     const newItem = {
-      id: Date.now(),
       title,
       price,
       category,
@@ -603,35 +603,37 @@ if (postItemForm) {
       telegram,
       image: uploadedBase64Image,
       emoji: category === "Books" ? "📘" : category === "Clothing" ? "👕" : "📱",
-      color: COLOR_GRADIENTS[Math.floor(Math.random() * COLOR_GRADIENTS.length)]
+      color: COLOR_GRADIENTS[Math.floor(Math.random() * COLOR_GRADIENTS.length)],
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
     };
 
-    // በስልኩ Local Storage ላይ ማስቀመጥ
-    PRODUCTS.unshift(newItem);
-    localStorage.setItem("mtu_products", JSON.stringify(PRODUCTS));
+    try {
+      await db.collection("products").add(newItem);
 
-    // Telegram Bot ካለ መረጃውን በ Telegram SDK መላክ
-    if (tg && tg.sendData) {
-      tg.sendData(JSON.stringify({ type: "NEW_LISTING", data: newItem }));
+      if (tg && tg.sendData) {
+        tg.sendData(JSON.stringify({ type: "NEW_LISTING", data: newItem }));
+      }
+
+      addNotification("New Listing Created", `Your item "${title}" has been published.`, "shopping-bag", "emerald");
+
+      form.reset();
+      uploadedBase64Image = null;
+      if (previewImg) previewImg.classList.add("hidden");
+      if (placeholder) placeholder.classList.remove("hidden");
+
+      closeModal("postItemModal");
+      showToast("Item posted successfully!");
+    } catch (err) {
+      console.error(err);
+      showToast("Error posting item to cloud");
     }
-
-    addNotification("New Listing Created", `Your item "${title}" has been published.`, "shopping-bag", "emerald");
-
-    form.reset();
-    uploadedBase64Image = null;
-    if (previewImg) previewImg.classList.add("hidden");
-    if (placeholder) placeholder.classList.remove("hidden");
-
-    closeModal("postItemModal");
-    renderProductGrid();
-    showToast("Item posted successfully!");
   });
 }
 
-// 2. Errand Request Form
+// 2. Errand Request Form -> Saves directly to Firestore
 const errandForm = document.getElementById("errandForm");
 if (errandForm) {
-  errandForm.addEventListener("submit", (e) => {
+  errandForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     const form = e.target;
 
@@ -642,7 +644,6 @@ if (errandForm) {
     const telegram = tg?.initDataUnsafe?.user?.username || extractInputValue(form, ['[name="telegram"]'], "");
 
     const newErrand = {
-      id: Date.now(),
       item,
       dorm,
       tip,
@@ -650,26 +651,30 @@ if (errandForm) {
       telegram,
       requester: tg?.initDataUnsafe?.user?.first_name || "Campus Student",
       time: "Just now",
-      urgent: false
+      urgent: false,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
     };
 
-    ERRANDS.unshift(newErrand);
-    localStorage.setItem("mtu_errands", JSON.stringify(ERRANDS));
+    try {
+      await db.collection("errands").add(newErrand);
 
-    if (tg && tg.sendData) {
-      tg.sendData(JSON.stringify({ type: "NEW_ERRAND", data: newErrand }));
+      if (tg && tg.sendData) {
+        tg.sendData(JSON.stringify({ type: "NEW_ERRAND", data: newErrand }));
+      }
+
+      addNotification("Errand Request Posted", `Delivery request for "${item}" is live.`, "truck", "indigo");
+
+      form.reset();
+      closeModal("errandModal");
+      showToast("Errand request posted!");
+    } catch (err) {
+      console.error(err);
+      showToast("Error posting errand");
     }
-
-    addNotification("Errand Request Posted", `Delivery request for "${item}" is live.`, "truck", "indigo");
-
-    form.reset();
-    closeModal("errandModal");
-    renderErrandFeed();
-    showToast("Errand request posted!");
   });
 }
 
-// 3. Report Status Button Click
+// 3. Report Status Selection
 document.querySelectorAll(".report-status-btn").forEach((btn) => {
   btn.addEventListener("click", () => {
     document.querySelectorAll(".report-status-btn").forEach((b) => {
@@ -682,7 +687,7 @@ document.querySelectorAll(".report-status-btn").forEach((btn) => {
   });
 });
 
-// 4. Lost & Found Form Submission
+// 4. Lost & Found Form -> Saves directly to Firestore
 const reportForm = document.getElementById("reportForm");
 if (reportForm) {
   reportForm.addEventListener("submit", async (e) => {
@@ -697,7 +702,6 @@ if (reportForm) {
     const currentStatus = state.reportStatus || "lost";
 
     const newReport = {
-      id: Date.now(),
       status: currentStatus,
       item,
       location,
@@ -705,22 +709,26 @@ if (reportForm) {
       telegram,
       reporter: tg?.initDataUnsafe?.user?.first_name || "Campus Student",
       date: "Today",
-      emoji: currentStatus === "found" ? "📦" : "🔍"
+      emoji: currentStatus === "found" ? "📦" : "🔍",
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
     };
 
-    LOSTFOUND.unshift(newReport);
-    localStorage.setItem("mtu_lostfound", JSON.stringify(LOSTFOUND));
+    try {
+      await db.collection("lostfound").add(newReport);
 
-    if (tg && tg.sendData) {
-      tg.sendData(JSON.stringify({ type: "NEW_REPORT", data: newReport }));
+      if (tg && tg.sendData) {
+        tg.sendData(JSON.stringify({ type: "NEW_REPORT", data: newReport }));
+      }
+
+      addNotification("Lost & Found Report Submitted", `Report for "${item}" has been logged.`, "search-check", "emerald");
+
+      form.reset();
+      closeModal("reportModal");
+      showToast(`Report submitted as ${currentStatus.toUpperCase()}`);
+    } catch (err) {
+      console.error(err);
+      showToast("Error submitting report");
     }
-
-    addNotification("Lost & Found Report Submitted", `Report for "${item}" has been logged.`, "search-check", "emerald");
-
-    form.reset();
-    closeModal("reportModal");
-    renderLostFound();
-    showToast(`Report submitted as ${currentStatus.toUpperCase()}`);
   });
 }
 
@@ -748,21 +756,18 @@ document.querySelectorAll("[data-close-modal]").forEach((btn) => {
   btn.addEventListener("click", () => closeModal(btn.dataset.closeModal));
 });
 
-/* ---------------- Init ---------------- */
+/* ---------------- Initialization ---------------- */
 
 function init() {
   renderCategoryChips();
-  renderProductGrid();
-  renderErrandFeed();
-  renderLostFound();
   updateNotifUI();
   setupSearchListener();
   setupLostFoundFilterListeners();
   setTab("marketplace");
   refreshIcons();
-  
-  // አፑ ሲከፈት ከ GitHub ላይ የቅርብ ጊዜ መረጃዎችን ስቦ ያሳያል
-  syncWithGitHub();
+
+  // Real-time Firestore ማዳመጫውን ማስጀመር
+  listenToFirestore();
 }
 
 init();
