@@ -20,7 +20,9 @@ if (!firebase.apps.length) {
 }
 const db = firebase.firestore();
 
-// ---------------- Telegram WebApp & User ID Setup ----------------
+// ---------------- Admin Setup & Telegram WebApp ----------------
+const ADMIN_USERNAME = "yishrun"; // Admin Telegram Username (ያለ @)
+
 const tg = window.Telegram?.WebApp;
 if (tg) {
   tg.ready();
@@ -37,10 +39,12 @@ function getOrCreateDeviceId() {
   return deviceId;
 }
 
-// ባለቤቱን ለመለየት የሚጠቅም ID (የቴሌግራም ID ካለ እሱን፣ ከሌለ የብራውዘሩን Device ID ይጠቀማል)
 const currentUserId = tg?.initDataUnsafe?.user?.id 
   ? String(tg.initDataUnsafe.user.id) 
   : getOrCreateDeviceId();
+
+const currentUsername = tg?.initDataUnsafe?.user?.username?.toLowerCase() || "";
+const isAdmin = currentUsername === ADMIN_USERNAME.toLowerCase();
 
 /* ---------------- Real-time State & Local Data ---------------- */
 
@@ -65,26 +69,37 @@ let state = {
   reportStatus: "lost"
 };
 
-/* ---------------- Real-time Firestore Listeners ---------------- */
+/* ---------------- Real-time Firestore Listeners (With Expiration Filter) ---------------- */
 
 function listenToFirestore() {
+  // የ 14 ቀን Expiration cutoff መፈለጊያ
+  const fourteenDaysAgo = firebase.firestore.Timestamp.fromDate(
+    new Date(Date.now() - 14 * 24 * 60 * 60 * 1000)
+  );
+
   // 1. Real-time Products Sync
-  db.collection("products").onSnapshot((snapshot) => {
-    PRODUCTS = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    renderProductGrid();
-  }, (err) => console.error("Products listener error:", err));
+  db.collection("products")
+    .where("createdAt", ">=", fourteenDaysAgo)
+    .onSnapshot((snapshot) => {
+      PRODUCTS = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      renderProductGrid();
+    }, (err) => console.error("Products listener error:", err));
 
   // 2. Real-time Errands Sync
-  db.collection("errands").onSnapshot((snapshot) => {
-    ERRANDS = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    renderErrandFeed();
-  }, (err) => console.error("Errands listener error:", err));
+  db.collection("errands")
+    .where("createdAt", ">=", fourteenDaysAgo)
+    .onSnapshot((snapshot) => {
+      ERRANDS = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      renderErrandFeed();
+    }, (err) => console.error("Errands listener error:", err));
 
   // 3. Real-time Lost & Found Sync
-  db.collection("lostfound").onSnapshot((snapshot) => {
-    LOSTFOUND = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    renderLostFound();
-  }, (err) => console.error("LostFound listener error:", err));
+  db.collection("lostfound")
+    .where("createdAt", ">=", fourteenDaysAgo)
+    .onSnapshot((snapshot) => {
+      LOSTFOUND = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      renderLostFound();
+    }, (err) => console.error("LostFound listener error:", err));
 }
 
 /* ---------------- Form Helper & Utilities ---------------- */
@@ -344,9 +359,11 @@ function renderProductGrid() {
             <span>${p.emoji || "📦"}</span>
            </div>`;
 
-      // string ንፅፅር በማድረግ የፖስቱ ባለቤት መሆኑን ማረጋገጥ
+      // Admin ከሆነ ወይም የፖስቱ ባለቤት ከሆነ የማጥፊያ ቁልፍ ማሳየት
       const isOwner = p.userId && String(p.userId) === String(currentUserId);
-      const deleteBtnHTML = isOwner ? `
+      const canDelete = isAdmin || isOwner;
+
+      const deleteBtnHTML = canDelete ? `
         <button onclick="deleteProduct('${p.id}')" class="absolute top-2 right-2 z-10 w-7 h-7 rounded-full bg-red-500/80 text-white flex items-center justify-center shadow-lg hover:bg-red-600 transition-all">
           <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
         </button>
@@ -424,7 +441,9 @@ function renderErrandFeed() {
   wrap.innerHTML = ERRANDS.map(
     (e) => {
       const isOwner = e.userId && String(e.userId) === String(currentUserId);
-      const deleteBtnHTML = isOwner ? `
+      const canDelete = isAdmin || isOwner;
+
+      const deleteBtnHTML = canDelete ? `
         <button onclick="deleteErrand('${e.id}')" class="absolute top-3 right-3 text-red-400 hover:text-red-300 p-1">
           <i data-lucide="trash-2" class="w-4 h-4"></i>
         </button>
@@ -495,7 +514,9 @@ function renderLostFound() {
         : `<div class="w-12 h-12 rounded-2xl bg-base-700 flex items-center justify-center text-xl shrink-0">${i.emoji || "📦"}</div>`;
 
       const isOwner = i.userId && String(i.userId) === String(currentUserId);
-      const deleteBtnHTML = isOwner ? `
+      const canDelete = isAdmin || isOwner;
+
+      const deleteBtnHTML = canDelete ? `
         <button onclick="deleteLostFound('${i.id}')" class="absolute top-3 right-3 text-red-400 hover:text-red-300 p-1">
           <i data-lucide="trash-2" class="w-4 h-4"></i>
         </button>
@@ -634,7 +655,7 @@ if (postItemForm) {
       seller,
       phone,
       telegram,
-      userId: String(currentUserId), // ቋሚ string አድርጎ ማስቀመጥ
+      userId: String(currentUserId),
       image: uploadedBase64Image,
       emoji: category === "Books" ? "📘" : category === "Clothing" ? "👕" : "📱",
       color: COLOR_GRADIENTS[Math.floor(Math.random() * COLOR_GRADIENTS.length)],
