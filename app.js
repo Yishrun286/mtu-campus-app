@@ -69,37 +69,51 @@ let state = {
   reportStatus: "lost"
 };
 
-/* ---------------- Real-time Firestore Listeners (With Expiration Filter) ---------------- */
+/* ---------------- Real-time Firestore Listeners ---------------- */
 
 function listenToFirestore() {
-  // የ 14 ቀን Expiration cutoff መፈለጊያ
-  const fourteenDaysAgo = firebase.firestore.Timestamp.fromDate(
-    new Date(Date.now() - 14 * 24 * 60 * 60 * 1000)
-  );
-
   // 1. Real-time Products Sync
   db.collection("products")
-    .where("createdAt", ">=", fourteenDaysAgo)
+    .orderBy("createdAt", "desc")
     .onSnapshot((snapshot) => {
       PRODUCTS = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       renderProductGrid();
-    }, (err) => console.error("Products listener error:", err));
+    }, (err) => {
+      console.error("Products listener error:", err);
+      // Index መዘግየት ካጋጠመ ያለ orderBy እንዲያነብ fallback
+      db.collection("products").onSnapshot((snapshot) => {
+        PRODUCTS = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        renderProductGrid();
+      });
+    });
 
   // 2. Real-time Errands Sync
   db.collection("errands")
-    .where("createdAt", ">=", fourteenDaysAgo)
+    .orderBy("createdAt", "desc")
     .onSnapshot((snapshot) => {
       ERRANDS = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       renderErrandFeed();
-    }, (err) => console.error("Errands listener error:", err));
+    }, (err) => {
+      console.error("Errands listener error:", err);
+      db.collection("errands").onSnapshot((snapshot) => {
+        ERRANDS = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        renderErrandFeed();
+      });
+    });
 
   // 3. Real-time Lost & Found Sync
   db.collection("lostfound")
-    .where("createdAt", ">=", fourteenDaysAgo)
+    .orderBy("createdAt", "desc")
     .onSnapshot((snapshot) => {
       LOSTFOUND = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       renderLostFound();
-    }, (err) => console.error("LostFound listener error:", err));
+    }, (err) => {
+      console.error("LostFound listener error:", err);
+      db.collection("lostfound").onSnapshot((snapshot) => {
+        LOSTFOUND = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        renderLostFound();
+      });
+    });
 }
 
 /* ---------------- Form Helper & Utilities ---------------- */
@@ -359,7 +373,6 @@ function renderProductGrid() {
             <span>${p.emoji || "📦"}</span>
            </div>`;
 
-      // Admin ከሆነ ወይም የፖስቱ ባለቤት ከሆነ የማጥፊያ ቁልፍ ማሳየት
       const isOwner = p.userId && String(p.userId) === String(currentUserId);
       const canDelete = isAdmin || isOwner;
 
