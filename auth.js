@@ -50,7 +50,7 @@
     gatedSelectors: ['[data-action="contact-errand"]'],
 
     telegram: {
-    botToken: "9166501963:AAHwQ3T70f-GbQHpgyaOTeWeMwQXmgxofQY",
+    botToken: "9284758024:AAE9KanKejA1SiezTdK_cFcL0S6yef2oabQ",
     adminChatId: "-1003635976490",
     endpoint: "",        
     timeoutMs: 25000
