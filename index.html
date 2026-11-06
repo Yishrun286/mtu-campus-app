@@ -533,7 +533,7 @@
   #chatMessages { scroll-behavior: smooth; overscroll-behavior: contain; }
   #chatInput { font-size: 16px; } /* prevents iOS zoom-on-focus */
 
-  /* ---------- [NEW] Pop-up announcement (centered glass card) ---------- */
+  /* ---------- Pop-up announcement (centered glass card) ---------- */
   dialog#popupAnnouncementModal {
     margin: auto;
     animation: popIn 320ms cubic-bezier(.22,1,.36,1);
@@ -710,7 +710,7 @@
 
   <!-- ============ MODALS / BOTTOM SHEETS ============ -->
 
-  <!-- 📢 [NEW] Automatic Pop-up Announcement Modal -->
+  <!-- 📢 Automatic Pop-up Announcement Modal -->
   <dialog id="popupAnnouncementModal" class="w-[calc(100%-2.5rem)] max-w-[400px] p-0 rounded-3xl text-slate-100 overflow-hidden border border-white/10 bg-transparent">
     <div class="glass-strong relative rounded-3xl overflow-hidden">
       <!-- ambient glow -->
@@ -974,25 +974,10 @@
     <span id="toastMsg">Done</span>
   </div>
 
+  <!-- trust.js MUST load before app.js. All cleanup logic lives in app.js (runStaleDataCleanup).
+       The old inline notification-bell script was removed: app.js already handles the bell. -->
   <script src="trust.js"></script>
-<script src="app.js"></script>
-  <!-- 💡 Notification Button Handling Script -->
-  <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const notifBtn = document.getElementById("notifBtn");
-      const notifModal = document.getElementById("notifModal");
-      const notifBadge = document.getElementById("notifBadge");
-
-      if (notifBtn && notifModal) {
-        notifBtn.addEventListener("click", () => {
-          if (notifBadge) {
-            notifBadge.classList.add("hidden"); // ያላየኸው የለም ለማለት ነጥቧን ማጥፋት
-          }
-          if (!notifModal.open) notifModal.showModal();
-        });
-      }
-    });
-  </script>
+  <script src="app.js"></script>
 
 </body>
 </html>

@@ -4,6 +4,9 @@
    Uses globals defined in app.js: db, currentUserId, getTelegramFirstName,
    escapeHTML, showToast, openModal, closeModal,
    renderProductGrid, renderErrandFeed, renderLostFound.
+
+   NOTE: stale presence housekeeping now lives in app.js
+   (runStaleDataCleanup) so ALL cleanup is in one safe, audited place.
    ============================================================ */
 
 const MTUTrust = (() => {
@@ -13,7 +16,6 @@ const MTUTrust = (() => {
   const ONLINE_WINDOW_MS = 2 * 60 * 1000;   // "online" = heartbeat within 2 min
   const HEARTBEAT_MS = 45 * 1000;           // write lastSeen every 45s
   const LISTEN_WINDOW_MS = 10 * 60 * 1000;  // only subscribe to docs seen in last 10 min
-  const STALE_PRESENCE_MS = 24 * 60 * 60 * 1000;
   const TRUSTED_MIN_COUNT = 5;              // "Trusted" badge thresholds
   const TRUSTED_MIN_AVG = 4.5;
 
@@ -66,12 +68,6 @@ const MTUTrust = (() => {
 
     // Users who closed the app stop sending heartbeats (so no snapshot fires) → re-evaluate by clock
     setInterval(renderOnline, 15000);
-
-    // Best-effort housekeeping of very old presence docs
-    const old = firebase.firestore.Timestamp.fromDate(new Date(Date.now() - STALE_PRESENCE_MS));
-    db.collection("presence").where("lastSeen", "<", old).limit(50).get()
-      .then((s) => s.forEach((d) => d.ref.delete()))
-      .catch(() => {});
   }
 
   /* ============================================================

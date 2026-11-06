@@ -1,7 +1,8 @@
 /* ============================================================
    MTU Campus — Firebase Production Logic & Real-time Sync
    Tabs: Marketplace · Campus Express & Emergency · Lost & Found
-   Includes: real-time chat, inbox, notifications & unread badges
+   Includes: real-time chat, inbox, notifications, unread badges
+   and a SAFE automated stale-data cleanup (see runStaleDataCleanup).
    ============================================================ */
 
 // ---------------- Firebase Configuration & Init ----------------
@@ -121,6 +122,150 @@ let state = {
 };
 
 /* ============================================================
+   SAFE STALE-DATA CLEANUP
+   ------------------------------------------------------------
+   Runs at most once every 24h per device, a few seconds after load.
+
+   WHAT IT MAY TOUCH (strict allow-list):
+     1. presence collection   → heartbeat docs not seen for 30+ days   (admin only)
+     2. products collection   → ONLY items with status === "sold" whose
+                                sold date (soldAt, or createdAt for
+                                legacy items) is 30+ days old.
+                                They are ARCHIVED to archive_products
+                                first, then removed from products.
+                                Owners clean their own; admin cleans all.
+     3. local notification log → entries older than 30 days (this device)
+
+   WHAT IT NEVER TOUCHES (hard-blocked in code, not just by convention):
+     chats (and their messages subcollection), ratings, users, announcements,
+     AVAILABLE products, errands, lostfound.
+   Those are managed only by user actions (delete / mark sold / etc).
+   ============================================================ */
+
+const CLEANUP_DAYS = 30;
+const CLEANUP_DAY_MS = 24 * 60 * 60 * 1000;
+const CLEANUP_MAX_AGE_MS = CLEANUP_DAYS * CLEANUP_DAY_MS;
+const CLEANUP_INTERVAL_MS = CLEANUP_DAY_MS;      // throttle: once per day
+const CLEANUP_STORAGE_KEY = "mtu_last_cleanup";
+const CLEANUP_BATCH_SIZE = 200;                   // docs per batch (archive+delete = 2 ops each, limit 500)
+
+// Only these collections may ever be deleted from by the cleanup
+const CLEANUP_DELETABLE = Object.freeze(["presence", "products"]);
+// These are explicitly forbidden (belt and braces)
+const CLEANUP_PROTECTED = Object.freeze([
+  "chats", "messages", "ratings", "users", "announcements", "errands", "lostfound"
+]);
+
+function assertCleanupAllowed(collectionName) {
+  if (CLEANUP_PROTECTED.includes(collectionName) || !CLEANUP_DELETABLE.includes(collectionName)) {
+    throw new Error(`[MTU cleanup] BLOCKED: "${collectionName}" is protected and must not be cleaned automatically.`);
+  }
+}
+
+function docTimeMs(value) {
+  if (!value) return 0;
+  if (typeof value.toMillis === "function") return value.toMillis();
+  if (value instanceof Date) return value.getTime();
+  const n = new Date(value).getTime();
+  return Number.isFinite(n) ? n : 0;
+}
+
+// Local notification log only (no Firestore involved)
+function cleanupOldLocalNotifications(cutoffMs) {
+  const before = notifications.length;
+  notifications = notifications.filter((n) => !n.ts || n.ts >= cutoffMs);
+  const removed = before - notifications.length;
+  if (removed > 0) {
+    safeStorage.set("mtu_notifications", JSON.stringify(notifications));
+    updateNotifUI();
+  }
+  return removed;
+}
+
+// Admin only: presence heartbeat docs not seen for 30+ days
+async function cleanupStalePresence(cutoffTs) {
+  assertCleanupAllowed("presence");
+  if (!isAdmin) return 0;
+
+  let removed = 0;
+  for (let round = 0; round < 5; round++) { // max 5 rounds × 200 per app load
+    const snap = await db.collection("presence")
+      .where("lastSeen", "<", cutoffTs)
+      .limit(CLEANUP_BATCH_SIZE)
+      .get();
+    if (snap.empty) break;
+
+    const batch = db.batch();
+    snap.docs.forEach((d) => batch.delete(d.ref));
+    await batch.commit();
+    removed += snap.size;
+    if (snap.size < CLEANUP_BATCH_SIZE) break;
+  }
+  return removed;
+}
+
+// SOLD products only, 30+ days old → archive copy, then delete original
+async function cleanupOldSoldProducts(cutoffMs) {
+  assertCleanupAllowed("products");
+
+  // Single-field equality queries need no composite index.
+  let query = db.collection("products").where("status", "==", "sold");
+  if (!isAdmin) query = query.where("userId", "==", String(currentUserId));
+
+  const snap = await query.limit(CLEANUP_BATCH_SIZE * 2).get();
+  if (snap.empty) return 0;
+
+  const stale = snap.docs.filter((d) => {
+    const data = d.data();
+    if (data.status !== "sold") return false; // re-check: NEVER remove an active item
+    const soldMs = docTimeMs(data.soldAt) || docTimeMs(data.createdAt);
+    return soldMs > 0 && soldMs < cutoffMs;
+  });
+
+  let removed = 0;
+  for (let i = 0; i < stale.length; i += CLEANUP_BATCH_SIZE) {
+    const chunk = stale.slice(i, i + CLEANUP_BATCH_SIZE);
+    const batch = db.batch();
+    chunk.forEach((d) => {
+      const archiveRef = db.collection("archive_products").doc(d.id);
+      batch.set(archiveRef, {
+        ...d.data(),
+        archivedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        archivedBy: String(currentUserId),
+        archivedReason: "sold-30d"
+      });
+      batch.delete(d.ref);
+    });
+    await batch.commit();
+    removed += chunk.length;
+  }
+  return removed;
+}
+
+async function runStaleDataCleanup() {
+  if (!db) return;
+
+  const last = Number(safeStorage.get(CLEANUP_STORAGE_KEY)) || 0;
+  if (Date.now() - last < CLEANUP_INTERVAL_MS) return;
+  safeStorage.set(CLEANUP_STORAGE_KEY, String(Date.now())); // set first → no retry storms
+
+  const cutoffMs = Date.now() - CLEANUP_MAX_AGE_MS;
+  const cutoffTs = firebase.firestore.Timestamp.fromDate(new Date(cutoffMs));
+  const summary = { notifications: 0, presence: 0, soldProducts: 0 };
+
+  try { summary.notifications = cleanupOldLocalNotifications(cutoffMs); }
+  catch (e) { console.warn("[MTU cleanup] notifications skipped:", e); }
+
+  try { summary.presence = await cleanupStalePresence(cutoffTs); }
+  catch (e) { console.warn("[MTU cleanup] presence skipped:", e); }
+
+  try { summary.soldProducts = await cleanupOldSoldProducts(cutoffMs); }
+  catch (e) { console.warn("[MTU cleanup] sold products skipped:", e); }
+
+  console.log("[MTU cleanup] done:", summary);
+}
+
+/* ============================================================
    Automatic Pop-up Announcement
    ============================================================ */
 
@@ -163,19 +308,11 @@ function checkAndShowPopup(announcementsList) {
 function listenToFirestore() {
   if (!db) return;
 
-  const fourteenDaysAgo = firebase.firestore.Timestamp.fromDate(
-    new Date(Date.now() - 14 * 24 * 60 * 60 * 1000)
-  );
-
   renderSkeletonLoaders();
 
-  // Auto-delete items older than 14 days
-  ["products", "errands", "lostfound"].forEach(async (col) => {
-    try {
-      const snapshot = await db.collection(col).where("createdAt", "<", fourteenDaysAgo).get();
-      snapshot.forEach((doc) => doc.ref.delete());
-    } catch (e) { /* silent */ }
-  });
+  // NOTE: the old 14-day auto-delete / 14-day display filter was REMOVED.
+  // Active posts are never deleted or hidden because of age.
+  // Stale data is handled only by runStaleDataCleanup() (sold items 30d+, old presence).
 
   // 0. Announcements → auto pop-up
   db.collection("announcements")
@@ -188,10 +325,10 @@ function listenToFirestore() {
 
   // 1. Products
   db.collection("products")
-    .where("createdAt", ">=", fourteenDaysAgo)
     .onSnapshot((snapshot) => {
       isLoadingProducts = false;
-      PRODUCTS = snapshot.docs.map((doc) => ({ id: doc.id, views: 0, ...doc.data() }));
+      PRODUCTS = snapshot.docs.map((doc) => ({ id: doc.id, views: 0, ...doc.data({ serverTimestamps: "estimate" }) }));
+      PRODUCTS.sort((a, b) => docTimeMs(b.createdAt) - docTimeMs(a.createdAt));
       renderProductGrid();
     }, (err) => {
       console.error("Products listener error:", err);
@@ -201,17 +338,17 @@ function listenToFirestore() {
 
   // 2. Errands
   db.collection("errands")
-    .where("createdAt", ">=", fourteenDaysAgo)
     .onSnapshot((snapshot) => {
-      ERRANDS = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      ERRANDS = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data({ serverTimestamps: "estimate" }) }));
+      ERRANDS.sort((a, b) => docTimeMs(b.createdAt) - docTimeMs(a.createdAt));
       renderErrandFeed();
     }, (err) => console.error("Errands listener error:", err));
 
   // 3. Lost & Found
   db.collection("lostfound")
-    .where("createdAt", ">=", fourteenDaysAgo)
     .onSnapshot((snapshot) => {
-      LOSTFOUND = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      LOSTFOUND = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data({ serverTimestamps: "estimate" }) }));
+      LOSTFOUND.sort((a, b) => docTimeMs(b.createdAt) - docTimeMs(a.createdAt));
       renderLostFound();
     }, (err) => console.error("LostFound listener error:", err));
 }
@@ -493,7 +630,13 @@ function markRoomRead(roomId) {
 async function toggleProductStatus(id, currentStatus) {
   const newStatus = currentStatus === "sold" ? "available" : "sold";
   try {
-    await db.collection("products").doc(String(id)).update({ status: newStatus });
+    await db.collection("products").doc(String(id)).update({
+      status: newStatus,
+      // soldAt lets the cleanup know WHEN the item was sold (30-day countdown starts here)
+      soldAt: newStatus === "sold"
+        ? firebase.firestore.FieldValue.serverTimestamp()
+        : firebase.firestore.FieldValue.delete()
+    });
     showToast(newStatus === "sold" ? "Item marked as Sold!" : "Item marked as Available");
   } catch (err) {
     console.error(err);
@@ -539,6 +682,7 @@ async function deleteLostFound(id) {
    chats/{roomId}                    → room metadata
    chats/{roomId}/messages/{msgId}   → { text, senderId, senderName, createdAt }
    roomId = {kind}_{listingId}_{buyerId}
+   Chats are NEVER cleaned up automatically.
    ============================================================ */
 
 let chatCtx = null;
@@ -747,13 +891,10 @@ function sendChatMessage(text) {
 
   const roomRef = db.collection("chats").doc(ctx.roomId);
   const msgRef = roomRef.collection("messages").doc();
- 
-   const iAmOwner = String(currentUserId) === ctx.ownerId;
+
+  const iAmOwner = String(currentUserId) === ctx.ownerId;
   const batch = db.batch();
   batch.set(roomRef, {
-
-   
-// ...inside batch.set(roomRef, { ... })
     [iAmOwner ? "ownerSent" : "buyerSent"]: true,
 
     participants: [ctx.buyerId, ctx.ownerId],
@@ -949,7 +1090,7 @@ function openContactModal({ id, name, title, location, phone, telegram, kind, li
   const metaEl = document.getElementById("contactMeta");
   const avatarEl = document.getElementById("contactAvatar");
 
-  // [FIX] Using innerHTML so MTUTrust.badge can render properly next to the contact name
+  // Using innerHTML so MTUTrust.badge can render properly next to the contact name
   if (nameEl) nameEl.innerHTML = `${escapeHTML(name || "Contact Person")} ${MTUTrust.badge(ownerId)}`;
   if (metaEl) metaEl.textContent = `${title || ""} ${location ? "• " + location : ""}`;
   if (avatarEl) avatarEl.textContent = (name || "A").trim().charAt(0).toUpperCase() || "A";
@@ -1790,7 +1931,7 @@ if (fabM) fabM.addEventListener("click", () => openModal("postItemModal"));
 if (fabE) fabE.addEventListener("click", () => openModal("errandModal"));
 if (fabL) fabL.addEventListener("click", () => openModal("reportModal"));
 
-// The ONLY handler for the bell (remove the inline <script> from index.html)
+// The ONLY handler for the bell (the inline <script> was removed from index.html)
 const notifBtn = document.getElementById("notifBtn");
 if (notifBtn) {
   notifBtn.addEventListener("click", () => {
@@ -1858,6 +1999,10 @@ function init() {
   if (db) {
     listenToFirestore();
     startGlobalChatListener();
+    // Safe cleanup: runs shortly after load so it never slows down first paint
+    setTimeout(() => {
+      runStaleDataCleanup().catch((e) => console.warn("[MTU cleanup] failed:", e));
+    }, 6000);
   } else {
     isLoadingProducts = false;
     renderProductGrid();
