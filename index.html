@@ -640,6 +640,138 @@
   }
   #popupAnnBody { max-height: 45vh; overflow-y: auto; overscroll-behavior: contain; }
 
+
+
+  /* ---------- Campus Express: delivery marketplace refresh ---------- */
+  #page-express { padding-bottom: 1.5rem; }
+  .express-welcome {
+    position: relative; isolation: isolate; overflow: hidden;
+    padding: 19px; border-radius: 25px;
+    border: 1px solid rgba(88,215,239,.22);
+    background: linear-gradient(128deg, rgba(17,53,73,.98), rgba(16,35,61,.98) 56%, rgba(43,34,91,.96));
+    box-shadow: 0 18px 42px rgba(0,0,0,.24), inset 0 1px 0 rgba(255,255,255,.07);
+  }
+  .express-welcome-glow { position:absolute; z-index:-1; width:190px; height:190px; right:-70px; top:-85px; border-radius:50%; background:rgba(24,182,217,.22); filter:blur(34px); }
+  .express-welcome-top { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+  .express-eyebrow { display:flex; align-items:center; gap:7px; color:#8DEBFA; font-size:9px; font-weight:800; letter-spacing:.13em; }
+  .express-live-dot { width:7px; height:7px; border-radius:50%; background:#58D7EF; box-shadow:0 0 10px rgba(88,215,239,.8); }
+  .express-open-pill { display:inline-flex; align-items:center; gap:5px; padding:6px 9px; border-radius:999px; border:1px solid rgba(88,215,239,.2); background:rgba(24,182,217,.09); color:#9DEBFA; font-size:9px; font-weight:700; white-space:nowrap; }
+  .express-open-pill svg { width:12px; height:12px; }
+  .express-welcome-main { display:flex; align-items:center; gap:10px; margin-top:22px; }
+  .express-welcome-copy { flex:1; min-width:0; }
+  .express-kicker { color:#B7C9DA; font-size:11px; font-weight:600; }
+  .express-welcome h2 { margin-top:3px; color:#F7FBFF; font-family:'Space Grotesk',sans-serif; font-size:clamp(27px,7vw,34px); line-height:1.1; font-weight:700; letter-spacing:-.05em; }
+  .express-welcome h2 span { color:#67DFF1; }
+  .express-welcome-copy > p:last-child { max-width:290px; margin-top:8px; color:#B8C9DA; font-size:11px; line-height:1.65; }
+  .express-hero-icon { flex:0 0 66px; width:66px; height:66px; display:grid; place-items:center; border:1px solid rgba(132,222,242,.25); border-radius:21px; background:linear-gradient(145deg,rgba(88,215,239,.15),rgba(109,94,245,.2)); transform:rotate(6deg); box-shadow:0 12px 28px rgba(0,0,0,.18); }
+  .express-hero-icon svg { width:31px; height:31px; color:#8CEBFA; stroke-width:1.6; transform:rotate(-6deg); }
+  .express-how-it-works { display:flex; align-items:center; justify-content:space-between; gap:5px; margin-top:19px; padding:11px 10px; border:1px solid rgba(148,181,214,.12); border-radius:15px; background:rgba(5,15,29,.28); }
+  .express-how-it-works div { display:flex; align-items:center; gap:5px; min-width:0; }
+  .express-how-it-works div span { display:grid; place-items:center; flex:0 0 19px; width:19px; height:19px; border-radius:7px; background:rgba(24,182,217,.18); color:#8DEBFA; font-size:10px; font-weight:800; }
+  .express-how-it-works b { color:#DCEAF5; font-size:9px; white-space:nowrap; }
+  .express-how-it-works > svg { width:12px; height:12px; flex:0 0 12px; color:#68839C; }
+  .express-primary-action { display:flex; width:100%; align-items:center; justify-content:center; gap:8px; margin-top:14px; padding:12px 15px; border-radius:13px; background:linear-gradient(100deg,#18B6D9,#58D7EF); color:#06101D; font-size:12px; font-weight:800; box-shadow:0 10px 24px rgba(24,182,217,.2); transition:transform .18s ease,filter .18s ease; }
+  .express-primary-action svg { width:16px; height:16px; }
+  .express-primary-action:active { transform:scale(.98); filter:brightness(.96); }
+  .express-benefits { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; }
+  .express-benefits article { display:flex; align-items:center; gap:9px; min-width:0; padding:12px 10px; border:1px solid rgba(148,181,214,.13); border-radius:16px; background:linear-gradient(150deg,rgba(20,36,58,.88),rgba(9,22,39,.9)); }
+  .express-benefit-icon { display:grid; place-items:center; flex:0 0 31px; width:31px; height:31px; border-radius:10px; color:#6DE2F3; background:rgba(24,182,217,.13); }
+  .express-benefit-icon svg { width:16px; height:16px; }
+  .express-benefit-purple { color:#B0A5FF; background:rgba(109,94,245,.16); }
+  .express-benefits b,.express-benefits small { display:block; }
+  .express-benefits b { color:#EAF4FC; font-size:10px; line-height:1.3; }
+  .express-benefits small { margin-top:3px; color:#91A4BA; font-size:9px; line-height:1.35; }
+  .express-emergency { overflow:hidden; border:1px solid rgba(248,113,113,.18); border-radius:16px; background:linear-gradient(120deg,rgba(70,19,20,.55),rgba(40,18,29,.42)); }
+  .express-emergency summary { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:12px 14px; color:#F6C6C6; font-size:11px; font-weight:700; cursor:pointer; list-style:none; }
+  .express-emergency summary::-webkit-details-marker { display:none; }
+  .express-emergency summary span { display:flex; align-items:center; gap:8px; }
+  .express-emergency summary svg { width:15px; height:15px; color:#FCA5A5; }
+  .express-emergency[open] summary > svg { transform:rotate(180deg); }
+  .express-emergency-body { padding:0 14px 13px; }
+  .express-emergency-body p { color:#D6A9A9; font-size:10px; line-height:1.5; }
+  .express-emergency-body button { display:flex; align-items:center; justify-content:center; gap:7px; width:100%; margin-top:10px; padding:10px; border-radius:11px; background:#DC4545; color:white; font-size:11px; font-weight:800; }
+  .express-feed-heading { display:flex; align-items:center; justify-content:space-between; gap:10px; padding-top:5px; }
+  .express-feed-overline { color:#6DDDEC; font-size:9px; font-weight:800; letter-spacing:.14em; }
+  .express-feed-heading h2 { margin-top:3px; color:#F4F8FC; font-family:'Space Grotesk',sans-serif; font-size:17px; font-weight:700; letter-spacing:-.03em; }
+  .express-feed-heading p:last-child { margin-top:3px; color:#91A4BA; font-size:10px; line-height:1.5; }
+  .express-feed-icon { display:grid; place-items:center; flex:0 0 39px; width:39px; height:39px; border-radius:13px; border:1px solid rgba(88,215,239,.16); background:rgba(24,182,217,.09); color:#70E0F0; }
+  .express-feed-icon svg { width:19px; height:19px; }
+  #errandFeed > div { border:1px solid rgba(148,181,214,.15) !important; border-radius:19px !important; background:linear-gradient(150deg,rgba(20,36,58,.92),rgba(8,21,37,.96)) !important; box-shadow:0 13px 30px rgba(0,0,0,.2),inset 0 1px 0 rgba(255,255,255,.04) !important; transition:transform .2s ease,border-color .2s ease; }
+  #errandFeed > div:hover { transform:translateY(-2px); border-color:rgba(88,215,239,.28) !important; }
+  #errandFeed [data-action="contact-errand"] { border-radius:10px !important; padding:9px 12px !important; background:linear-gradient(100deg,#18B6D9,#58D7EF) !important; color:#06101D !important; box-shadow:0 8px 18px rgba(24,182,217,.18) !important; }
+  #errandFeed [data-action="delete-errand"] { border-radius:9px; background:rgba(239,68,68,.1); }
+  #errandFeed > div:has(> p) { min-height:115px; border-style:dashed !important; background:rgba(16,29,49,.55) !important; }
+  @media (max-width:380px) { .express-how-it-works { gap:3px; padding:9px 7px; } .express-how-it-works b { font-size:8px; } .express-hero-icon { flex-basis:55px; width:55px; height:55px; } }
+
+
+  /* ---------- Lost & Found: match the Campus Express / Marketplace visual system ---------- */
+  #page-lostfound { padding-bottom: 22px; }
+  .lostfound-welcome {
+    position:relative; isolation:isolate; overflow:hidden;
+    padding:17px 18px 16px; border-radius:25px;
+    border:1px solid rgba(88,215,239,.22);
+    background:linear-gradient(122deg,rgba(17,49,70,.98),rgba(17,31,57,.98) 53%,rgba(40,31,85,.97));
+    box-shadow:0 18px 42px rgba(0,0,0,.25),inset 0 1px 0 rgba(255,255,255,.07);
+  }
+  .lostfound-welcome::before {
+    content:"";position:absolute;inset:0;z-index:-1;opacity:.27;
+    background-image:linear-gradient(rgba(255,255,255,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.045) 1px,transparent 1px);
+    background-size:28px 28px;mask-image:linear-gradient(110deg,black,transparent 78%);
+  }
+  .lostfound-welcome-glow {
+    position:absolute;z-index:-1;width:210px;height:210px;right:-75px;top:-105px;
+    border-radius:50%;background:rgba(24,182,217,.24);filter:blur(34px);
+  }
+  .lostfound-welcome-top { display:flex;align-items:center;justify-content:space-between;gap:8px; }
+  .lostfound-eyebrow { display:flex;align-items:center;gap:7px;color:#8DEBFA;font-size:9px;font-weight:900;letter-spacing:.13em; }
+  .lostfound-live-dot { width:7px;height:7px;border-radius:50%;background:#58D7EF;box-shadow:0 0 12px rgba(88,215,239,.85); }
+  .lostfound-community-pill { display:inline-flex;align-items:center;gap:5px;padding:6px 9px;border:1px solid rgba(88,215,239,.2);border-radius:999px;background:rgba(24,182,217,.09);color:#A6EAF5;font-size:9px;font-weight:700;white-space:nowrap; }
+  .lostfound-community-pill svg { width:12px;height:12px; }
+  .lostfound-welcome-main { position:relative;display:flex;align-items:center;gap:8px;margin-top:16px; }
+  .lostfound-welcome-copy { min-width:0;max-width:calc(100% - 76px); }
+  .lostfound-kicker { color:#B8C9DA;font-size:11px;font-weight:600; }
+  .lostfound-welcome-copy h2 { margin-top:3px;color:#F7FBFF;font-family:'Space Grotesk',sans-serif;font-size:clamp(29px,7.8vw,37px);line-height:1.12;font-weight:700;letter-spacing:-.055em; }
+  .lostfound-welcome-copy h2 span { color:#66DDF0; }
+  .lostfound-welcome-copy > p:last-child { margin-top:9px;color:#B6C7D9;font-size:10px;line-height:1.75; }
+  .lostfound-hero-icon { flex:0 0 66px;width:66px;height:66px;display:grid;place-items:center;border:1px solid rgba(132,222,242,.22);border-radius:21px;background:linear-gradient(145deg,rgba(88,215,239,.13),rgba(109,94,245,.18));transform:rotate(7deg);box-shadow:0 12px 28px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,.08); }
+  .lostfound-hero-icon svg { width:33px;height:33px;color:#8CEBFA;stroke-width:1.5;transform:rotate(-7deg); }
+  .lostfound-how { display:flex;align-items:center;justify-content:space-between;gap:4px;margin-top:17px;padding:10px 9px;border:1px solid rgba(148,181,214,.12);border-radius:15px;background:rgba(5,16,31,.34); }
+  .lostfound-how div { display:flex;align-items:center;gap:5px;min-width:0; }
+  .lostfound-how div span { flex:0 0 19px;width:19px;height:19px;display:grid;place-items:center;border-radius:6px;background:rgba(24,182,217,.18);color:#8DEBFA;font-size:9px;font-weight:900; }
+  .lostfound-how b { color:#D7E4F0;font-size:8px;font-weight:800;white-space:nowrap; }
+  .lostfound-how > svg { width:12px;height:12px;flex:0 0 12px;color:#607A94; }
+  .lostfound-primary-action { display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin-top:13px;padding:12px 14px;border-radius:13px;background:linear-gradient(100deg,#18B6D9,#58D7EF);color:#06101D;font-size:12px;font-weight:900;box-shadow:0 10px 24px rgba(24,182,217,.2); }
+  .lostfound-primary-action svg { width:16px;height:16px; }
+  .lostfound-benefits { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px; }
+  .lostfound-benefits article { display:flex;align-items:center;gap:9px;min-width:0;padding:12px 10px;border:1px solid rgba(148,181,214,.13);border-radius:17px;background:linear-gradient(150deg,rgba(20,36,58,.88),rgba(9,22,39,.92));box-shadow:inset 0 1px 0 rgba(255,255,255,.035),0 9px 24px rgba(0,0,0,.12); }
+  .lostfound-benefit-icon { flex:0 0 31px;width:31px;height:31px;display:grid;place-items:center;border-radius:10px;background:rgba(24,182,217,.13);color:#6DE2F3; }
+  .lostfound-benefit-icon svg { width:16px;height:16px; }
+  .lostfound-benefit-purple { background:rgba(109,94,245,.16);color:#B0A5FF; }
+  .lostfound-benefits b { display:block;color:#EAF2FA;font-size:9px;font-weight:800;line-height:1.4; }
+  .lostfound-benefits small { display:block;margin-top:3px;color:#91A4BA;font-size:8px;line-height:1.45; }
+  .lostfound-feed { padding:14px;border:1px solid rgba(148,181,214,.13);border-radius:21px;background:linear-gradient(150deg,rgba(16,29,49,.82),rgba(7,18,33,.88));box-shadow:0 14px 35px rgba(0,0,0,.17),inset 0 1px 0 rgba(255,255,255,.035); }
+  .lostfound-feed-heading { display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:13px; }
+  .lostfound-feed-overline { color:#7893AE;font-size:8px;font-weight:900;letter-spacing:.16em; }
+  .lostfound-feed-heading h3 { margin-top:4px;color:#EAF2FA;font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700;letter-spacing:-.03em; }
+  .lostfound-feed-heading p:last-child { margin-top:3px;color:#91A4BA;font-size:9px;line-height:1.5; }
+  .lostfound-feed-icon { flex:0 0 39px;width:39px;height:39px;display:grid;place-items:center;border:1px solid rgba(88,215,239,.17);border-radius:13px;background:rgba(24,182,217,.1);color:#70DFF0; }
+  .lostfound-feed-icon svg { width:19px;height:19px; }
+  #page-lostfound > .lostfound-feed .glass { padding:4px !important;border-radius:14px !important;background:rgba(5,16,31,.56) !important; }
+  #page-lostfound #lfPill { background:linear-gradient(135deg,#6D5EF5,#18B6D9) !important;box-shadow:0 7px 20px rgba(109,94,245,.24); }
+  #page-lostfound .lf-toggle-btn { min-height:36px; }
+  #lostFoundList { display:grid;gap:11px;margin-top:14px; }
+  #lostFoundList > * { overflow:hidden;border:1px solid rgba(148,181,214,.14) !important;border-radius:18px !important;background:linear-gradient(150deg,rgba(20,36,58,.94),rgba(8,21,37,.97)) !important;box-shadow:0 12px 28px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,.04);transition:transform .2s ease,border-color .2s ease; }
+  #lostFoundList > *:hover { transform:translateY(-2px);border-color:rgba(88,215,239,.26) !important; }
+  @media(max-width:380px) {
+    .lostfound-welcome { padding:15px 14px; }
+    .lostfound-welcome-copy { max-width:calc(100% - 63px); }
+    .lostfound-hero-icon { flex-basis:55px;width:55px;height:55px; }
+    .lostfound-how { padding:9px 6px; }
+    .lostfound-how b { font-size:7px; }
+    .lostfound-how > svg { width:9px;height:9px;flex-basis:9px; }
+    .lostfound-benefits article { padding:10px 8px;gap:7px; }
+  }
+
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
@@ -771,58 +903,120 @@
       </section>
 
       <!-- ---------- CAMPUS EXPRESS & EMERGENCY PAGE ---------- -->
-      <section id="page-express" class="page px-5 space-y-5 hidden">
+      <section id="page-express" class="page px-5 space-y-4 hidden">
 
-        <!-- Emergency banner -->
-        <div class="relative rounded-3xl p-5 overflow-hidden bg-gradient-to-br from-[#3B0A0A] via-[#4A1207] to-[#5A1B06] border border-red-500/30 shadow-glow">
-          <div class="absolute -right-8 -top-8 w-32 h-32 rounded-full bg-red-500/20 blur-2xl"></div>
-          <div class="relative z-10 flex items-start gap-3">
-            <div class="relative shrink-0 w-11 h-11 rounded-2xl bg-red-500/20 flex items-center justify-center border border-red-400/30">
-              <div class="pulse-ring"></div>
-              <i data-lucide="siren" class="w-5 h-5 text-red-300"></i>
+        <!-- Express introduction: student-to-student delivery marketplace -->
+        <section class="express-welcome" aria-label="Campus Express delivery">
+          <div class="express-welcome-glow" aria-hidden="true"></div>
+          <div class="express-welcome-top">
+            <span class="express-eyebrow"><span class="express-live-dot"></span> STUDENT-POWERED DELIVERY</span>
+            <span class="express-open-pill"><i data-lucide="radio" aria-hidden="true"></i> Campus network</span>
+          </div>
+          <div class="express-welcome-main">
+            <div class="express-welcome-copy">
+              <p class="express-kicker">Need something brought to you?</p>
+              <h2>ተማሪ <span>ዴሊቨሪ</span></h2>
+              <p> ስራዎች ይበዙብዎታል? ጊዜ ይቆጥቡ! የሚፈልጉትን ምግብ፣ ማቴሪያል ወይም እቃ ፖስት ያድርጉ፤ አንድ ጓደኛዎ ፈጥኖ ተቀብሎ እስከ መኝታ ክፍልዎ ወይም እስከ ቀጠሮ ቦታዎ ያመጣልዎታል</p>
             </div>
-            <div class="flex-1 min-w-0">
-              <div class="flex items-center gap-2">
-                <p class="font-display font-bold text-sm text-red-50">Emergency Assistance</p>
-                <span class="text-[10px] uppercase tracking-wide font-semibold text-amber-300 bg-amber-500/10 border border-amber-400/30 px-1.5 py-0.5 rounded-md">Live 24/7</span>
-              </div>
-              <p class="text-xs text-red-100/70 mt-1 leading-relaxed">Feeling unwell, injured, or need an urgent clinic escort? Get a verified campus responder to you fast.</p>
-              <button id="btnEmergency" class="tap mt-3 w-full bg-red-500 hover:bg-red-400 text-white text-sm font-semibold py-2.5 rounded-xl flex items-center justify-center gap-2 shadow-[0_8px_20px_-4px_rgba(239,68,68,0.55)]">
-                <i data-lucide="phone-call" class="w-4 h-4"></i>
-                Request Emergency Escort
-              </button>
-            </div>
+            <div class="express-hero-icon" aria-hidden="true"><i data-lucide="package-check"></i></div>
           </div>
-        </div>
+          <div class="express-how-it-works" aria-label="How Campus Express works">
+            <div><span>1</span><b>Post a request</b></div>
+            <i data-lucide="arrow-right" aria-hidden="true"></i>
+            <div><span>2</span><b>Student accepts</b></div>
+            <i data-lucide="arrow-right" aria-hidden="true"></i>
+            <div><span>3</span><b>Get delivery</b></div>
+          </div>
+          <button type="button" class="express-primary-action" onclick="document.getElementById('fabExpress')?.click()">
+            <i data-lucide="plus-circle" aria-hidden="true"></i> Request a delivery
+          </button>
+        </section>
 
-        <!-- Section header -->
-        <div class="flex items-center justify-between pt-1">
-          <div>
-            <p class="font-display font-semibold text-sm text-slate-100">Delivery &amp; Errands</p>
-            <p class="text-xs text-slate-500">Runners near your dorm</p>
-          </div>
-          <div class="flex items-center gap-1.5 text-xs text-emerald-soft bg-emerald/10 border border-emerald/20 px-2.5 py-1 rounded-full">
-            <span class="w-1.5 h-1.5 rounded-full bg-emerald-soft animate-pulse"></span>
-            12 runners online
-          </div>
-        </div>
+        <!-- Quick guidance cards -->
+        <section class="express-benefits" aria-label="Campus Express benefits">
+          <article><span class="express-benefit-icon"><i data-lucide="users" aria-hidden="true"></i></span><div><b>ተማሪ ለ ተማሪ</b><small>Get help from fellow MTU students</small></div></article>
+          <article><span class="express-benefit-icon express-benefit-purple"><i data-lucide="wallet" aria-hidden="true"></i></span><div><b>Choose your tip</b><small>Offer a fair tip for the delivery</small></div></article>
+        </section>
 
-        <!-- Errand feed -->
+        <!-- Emergency help remains available, but secondary to delivery requests -->
+        <details class="express-emergency">
+          <summary><span><i data-lucide="shield-alert" aria-hidden="true"></i> Need urgent campus assistance?</span><i data-lucide="chevron-down" aria-hidden="true"></i></summary>
+          <div class="express-emergency-body">
+            <p>For urgent health or safety support, use the campus emergency assistance option.</p>
+            <button id="btnEmergency" class="tap"><i data-lucide="phone-call" class="w-4 h-4"></i> Request Emergency Escort</button>
+          </div>
+        </details>
+
+        <!-- Live request feed; populated by the existing app.js -->
+        <div class="express-feed-heading">
+          <div><p class="express-feed-overline">HELP A FELLOW STUDENT</p><h2>Delivery requests</h2><p>Accept a request and contact the student to coordinate pickup.</p></div>
+          <span class="express-feed-icon"><i data-lucide="package-search" aria-hidden="true"></i></span>
+        </div>
         <div id="errandFeed" class="space-y-3"></div>
       </section>
 
       <!-- ---------- LOST & FOUND PAGE ---------- -->
       <section id="page-lostfound" class="page px-5 space-y-4 hidden">
 
-        <!-- Toggle -->
-        <div class="relative flex glass rounded-2xl p-1 shadow-glow">
-          <div id="lfPill" class="absolute top-1 bottom-1 left-1 w-[calc(33.333%-4px)] rounded-xl bg-gradient-to-br from-indigo to-indigo-soft transition-transform duration-300 ease-out"></div>
-          <button data-lf="all" class="lf-toggle-btn relative z-10 flex-1 text-xs font-semibold py-2.5 rounded-xl text-white">All</button>
-          <button data-lf="lost" class="lf-toggle-btn relative z-10 flex-1 text-xs font-semibold py-2.5 rounded-xl text-slate-400">Lost</button>
-          <button data-lf="found" class="lf-toggle-btn relative z-10 flex-1 text-xs font-semibold py-2.5 rounded-xl text-slate-400">Found</button>
-        </div>
+        <!-- Visual introduction: presentation only; all original JS hooks remain below -->
+        <section class="lostfound-welcome" aria-label="Lost and Found">
+          <div class="lostfound-welcome-glow" aria-hidden="true"></div>
+          <div class="lostfound-welcome-top">
+            <span class="lostfound-eyebrow"><span class="lostfound-live-dot"></span> YOUR CAMPUS COMMUNITY</span>
+            <span class="lostfound-community-pill"><i data-lucide="users" aria-hidden="true"></i> MTU community</span>
+          </div>
+          <div class="lostfound-welcome-main">
+            <div class="lostfound-welcome-copy">
+              <p class="lostfound-kicker">Lost something or found an item?</p>
+              <h2>የጠፉ <span>ዕቃዎች</span></h2>
+              <p>የጠፋብዎትን እቃ በቀላሉ ይፈልጉ፤ ያገኙትንም እቃ ለባለቤቱ እንዲመለስ ያጋሩ። በካምፓስ ውስጥ እርስ በርሳችን እንረዳዳ!</p>
+            </div>
+            <div class="lostfound-hero-icon" aria-hidden="true"><i data-lucide="search-check"></i></div>
+          </div>
+          <div class="lostfound-how">
+            <div><span>1</span><b>Browse reports</b></div>
+            <i data-lucide="arrow-right" aria-hidden="true"></i>
+            <div><span>2</span><b>Post an item</b></div>
+            <i data-lucide="arrow-right" aria-hidden="true"></i>
+            <div><span>3</span><b>Reconnect</b></div>
+          </div>
+          <button type="button" class="lostfound-primary-action" onclick="document.getElementById('fabLostFound')?.click()">
+            <i data-lucide="plus-circle" aria-hidden="true"></i> Report a lost or found item
+          </button>
+        </section>
 
-        <div id="lostFoundList" class="space-y-3"></div>
+        <!-- Small guidance cards -->
+        <section class="lostfound-benefits" aria-label="Lost and Found tips">
+          <article>
+            <span class="lostfound-benefit-icon"><i data-lucide="search" aria-hidden="true"></i></span>
+            <div><b>Looking for an item?</b><small>Browse reports from students</small></div>
+          </article>
+          <article>
+            <span class="lostfound-benefit-icon lostfound-benefit-purple"><i data-lucide="heart-handshake" aria-hidden="true"></i></span>
+            <div><b>Found something?</b><small>Help return it to its owner</small></div>
+          </article>
+        </section>
+
+        <!-- Existing filter controls: IDs, data attributes and classes are preserved for app.js -->
+        <section class="lostfound-feed">
+          <div class="lostfound-feed-heading">
+            <div>
+              <p class="lostfound-feed-overline">CAMPUS COMMUNITY</p>
+              <h3>Browse reports</h3>
+              <p>Explore recent lost and found items around campus.</p>
+            </div>
+            <span class="lostfound-feed-icon"><i data-lucide="clipboard-list" aria-hidden="true"></i></span>
+          </div>
+
+          <div class="relative flex glass rounded-2xl p-1 shadow-glow">
+            <div id="lfPill" class="absolute top-1 bottom-1 left-1 w-[calc(33.333%-4px)] rounded-xl bg-gradient-to-br from-indigo to-indigo-soft transition-transform duration-300 ease-out"></div>
+            <button data-lf="all" class="lf-toggle-btn relative z-10 flex-1 text-xs font-semibold py-2.5 rounded-xl text-white">All</button>
+            <button data-lf="lost" class="lf-toggle-btn relative z-10 flex-1 text-xs font-semibold py-2.5 rounded-xl text-slate-400">Lost</button>
+            <button data-lf="found" class="lf-toggle-btn relative z-10 flex-1 text-xs font-semibold py-2.5 rounded-xl text-slate-400">Found</button>
+          </div>
+
+          <div id="lostFoundList" class="space-y-3"></div>
+        </section>
       </section>
 
     </main>

@@ -1158,7 +1158,7 @@ function openContactModal({ id, name, title, location, phone, telegram, kind, li
 
 const TAB_META = {
   marketplace: { title: "ተማሪ ገበያ (Temari Gebeya)", subtitle: "Buy & sell around campus", index: 0 },
-  express: { title: "Campus Express", subtitle: "Delivery, errands & emergency help", index: 1 },
+  express: { title: "ተማሪ ዴሊቨሪ", subtitle: "Delivery, errands & emergency help", index: 1 },
   lostfound: { title: "Lost & Found", subtitle: "Reunite items with their owners", index: 2 },
 };
 
