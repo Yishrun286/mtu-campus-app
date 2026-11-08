@@ -1,0 +1,10 @@
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+.env*
+!.env.example
+service-account.json
+campus-app-fda0d-firebase-adminsdk-fbsvc-bda4cfbfd4.json
+*.json
+!package.json

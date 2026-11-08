@@ -18,10 +18,14 @@ const firebaseConfig = {
 
 // If the SDK is blocked / fails to load, the app must still boot (so we can show errors)
 let db = null;
+
 try {
   if (typeof firebase === "undefined") throw new Error("Firebase SDK did not load");
   if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
   db = firebase.firestore();
+
+  db.settings({ experimentalAutoDetectLongPolling: true, merge: true });
+
 } catch (e) {
   console.error("[MTU] Firebase init failed:", e);
 }

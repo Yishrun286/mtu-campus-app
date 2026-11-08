@@ -1,41 +1,36 @@
 /* ============================================================
-   MTU Campus — auth.js  v2  (photo-ID verification + admin notify)
+   MTU Campus — auth.js  v3  (photo-ID verification + Telegram inline approval)
    ------------------------------------------------------------
    FLOW
      1. User taps a gated button (default: "Accept & Contact").
      2. Not verified → glassmorphic modal asks for:
           Full Name · MTU ID Number · ID card photo
-     3. Submit → photo + details are sent to your Telegram admin
-        group via Bot API `sendPhoto`, tagged with a unique REQUEST ID.
+     3. Submit → photo + details go to your Cloudflare Worker (/send),
+        which forwards them to the admin Telegram group via `sendPhoto`
+        with inline buttons:  ✅ Approve  /  ❌ Reject
      4. Status is saved in localStorage as "pending". While pending,
         every gated action is blocked and the user sees a
         "pending admin approval" screen.
-     5. Approval (see APPROVAL below) flips the status to "approved".
+     5. An admin taps a button in Telegram → Telegram calls the Worker
+        (/webhook) → Worker writes verifications/{requestId}.status in
+        Firestore and edits the Telegram message. This file's live
+        Firestore listener flips the student to approved / rejected.
 
    NON-DESTRUCTIVE: edits no existing function, style or DOM node.
    It adds one capture-phase click listener, its own <style> and its
    own <dialog>. Load it AFTER app.js.
 
-   ⚠ SECURITY — READ THIS
-     A bot token placed in browser JS is PUBLIC: anyone can open
-     DevTools, copy it, and spam/read your admin group.
-     Recommended: set CONFIG.telegram.endpoint to a tiny proxy
-     (Cloudflare Worker / Firebase Cloud Function) that holds the
-     token server-side and forwards the multipart request. Leave
-     botToken empty in that case. Direct mode is for testing only.
-
-   APPROVAL (client-side limitation)
-     localStorage cannot be changed by you remotely. The practical
-     approval path is the optional Firestore status doc
-     `verifications/{requestId}`: the app writes {status:"pending"};
-     you set status to "approved" (or "rejected") in the Firebase
-     console, and the user's app picks it up live.
-     Needs a Firestore rule such as:
-       match /verifications/{id} {
-         allow create, read: if true;       // tighten later
-         allow update, delete: if false;    // admin uses console
-       }
-     Without it the user simply stays "pending".
+   SETUP
+     • Deploy worker.js, then set CONFIG.telegram.endpoint to
+       "https://<your-worker>.workers.dev/send".
+     • Leave botToken EMPTY. Never put the token in browser JS.
+     • Firestore rules (admin writes come from the Worker's service
+       account, which bypasses rules):
+         match /verifications/{id} {
+           allow create: if request.resource.data.status == "pending";
+           allow read: if true;
+           allow update, delete: if false;
+         }
    ============================================================ */
 (function () {
   "use strict";
@@ -50,13 +45,15 @@
     gatedSelectors: ['[data-action="contact-errand"]'],
 
     telegram: {
-    botToken: "9166501963:AAHwQ3T70f-GbQHpgyaOTeWeMwQXmgxofQY",
-    adminChatId: "-1003635976490",
-    endpoint: "",        
-    timeoutMs: 25000
-},
+      // Worker URL that holds the bot token (recommended).
+      endpoint: "https://mtu-campus-worker.mtu-campus.workers.dev/send",
+      // Direct mode (testing only, exposes the token publicly): fill both and clear endpoint.
+      botToken: "",
+      adminChatId: "",
+      timeoutMs: 25000
+    },
 
-    // Optional live status sync through Firestore (uses the app's existing `db`).
+    // Live status sync through Firestore (uses the app's existing `db`).
     useFirestoreStatus: true,
     statusCollection: "verifications",
 
@@ -114,6 +111,7 @@
   function deviceId() { return store.get("mtu_device_id") || ""; }
 
   // Unique, human-friendly request id, e.g. REQ-LX3K9A-7QF2
+  // (must match /^REQ-[A-Z0-9-]+$/ — the Worker's callback parser relies on it)
   function makeRequestId() {
     const t = Date.now().toString(36).toUpperCase();
     const r = Math.random().toString(36).slice(2, 6).toUpperCase().padEnd(4, "0");
@@ -205,15 +203,17 @@
   }
 
   /* ============================================================
-     5. Telegram: send ID photo + details to the admin group
+     5. Telegram: send ID photo + details + inline buttons to the admin group
      ============================================================ */
   function telegramConfigured() {
     const t = CONFIG.telegram;
-    return !!(t.adminChatId && (t.endpoint || t.botToken));
+    const endpointOk = !!t.endpoint && !/YOUR-WORKER/.test(t.endpoint);
+    return endpointOk || !!(t.botToken && t.adminChatId);
   }
 
   function buildCaption(req) {
     // Telegram caption limit = 1024 chars, parse_mode HTML → everything user-supplied is escaped.
+    // Kept short (<900) so the Worker can append the "APPROVED/REJECTED by …" line later.
     const tu = tgUser();
     const tgLine = tu
       ? `${tu.username ? "@" + esc(tu.username) : "(no username)"} · id <code>${esc(tu.id)}</code>`
@@ -227,11 +227,19 @@
       `📱 Device: <code>${esc(deviceId() || "n/a")}</code>`,
       `🕒 ${esc(new Date().toISOString().replace("T", " ").slice(0, 16))} UTC`,
       "",
-      CONFIG.useFirestoreStatus
-        ? `✅ To approve: Firestore → <code>${esc(CONFIG.statusCollection)}/${esc(req.requestId)}</code> → status = approved (or rejected)`
-        : "Reply here to approve / reject."
+      "👇 Review the ID photo, then tap a button:"
     ];
-    return lines.join("\n").slice(0, 1020);
+    return lines.join("\n").slice(0, 900);
+  }
+
+  // Inline keyboard shown under the photo. callback_data must stay ≤ 64 bytes.
+  function buildReplyMarkup(requestId) {
+    return {
+      inline_keyboard: [[
+        { text: "Approve ✅", callback_data: `approve_${requestId}` },
+        { text: "Reject ❌", callback_data: `reject_${requestId}` }
+      ]]
+    };
   }
 
   async function sendToTelegram(req, photoBlob) {
@@ -239,13 +247,15 @@
     if (!telegramConfigured()) {
       throw new Error("Verification is not configured yet. Please contact the admin.");
     }
-    const url = t.endpoint || `https://api.telegram.org/bot${t.botToken}/sendPhoto`;
+    const usingWorker = !!t.endpoint && !/YOUR-WORKER/.test(t.endpoint);
+    const url = usingWorker ? t.endpoint : `https://api.telegram.org/bot${t.botToken}/sendPhoto`;
 
     const form = new FormData();
-    form.append("chat_id", t.adminChatId);
+    if (t.adminChatId) form.append("chat_id", t.adminChatId); // the Worker overrides this with its own ADMIN_CHAT_ID
     form.append("photo", photoBlob, `${req.requestId}.jpg`);
     form.append("caption", buildCaption(req));
     form.append("parse_mode", "HTML");
+    form.append("reply_markup", JSON.stringify(buildReplyMarkup(req.requestId)));
 
     const ctrl = typeof AbortController === "function" ? new AbortController() : null;
     const timer = ctrl ? setTimeout(() => ctrl.abort(), t.timeoutMs) : null;
@@ -270,7 +280,9 @@
   }
 
   /* ============================================================
-     6. Firestore status sync (optional, best-effort, never blocks)
+     6. Firestore status sync (best-effort, never blocks)
+        The client only CREATES the pending doc. The Worker (service
+        account) is the only thing that changes it to approved/rejected.
      ============================================================ */
   let statusUnsub = null;
 
@@ -388,7 +400,7 @@
       return { ok: false, field: null, error: "Request sent, but this browser could not save it (storage disabled)." };
     }
 
-    createStatusDoc(rec);      // fire-and-forget
+    createStatusDoc(rec);      // fire-and-forget (Worker upserts if an admin taps before this lands)
     startStatusListener();
     return { ok: true, record: rec };
   }
@@ -696,5 +708,5 @@
   // Resume live status sync after a page reload (Firestore may not be ready instantly).
   if (isPending()) setTimeout(startStatusListener, 1500);
 
-  console.log("[MTUAuth] v2 ready — status:", getStatus() || "none", "| telegram configured:", telegramConfigured());
+  console.log("[MTUAuth] v3 ready — status:", getStatus() || "none", "| telegram configured:", telegramConfigured());
 })();
