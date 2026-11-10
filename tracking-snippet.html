@@ -1,0 +1,109 @@
+<!-- ============================================================
+     MTU Campus — Live Tracking: HTML blocks + setup notes
+     Nothing here replaces existing markup. Paste each block where noted.
+     ============================================================ -->
+
+
+<!-- ============ STEP 1 — index.html: just ONE script tag ============
+     Place it AFTER app.js and auth.js (Leaflet CSS/JS and the Firebase
+     Realtime Database SDK are loaded automatically by mtu-tracking.js
+     the first time a map is opened, so your page load stays fast).
+
+     <script src="trust.js"></script>
+     <script src="app.js"></script>
+     <script src="auth.js"></script>
+     <script src="mtu-tracking.js"></script>      <-- ADD THIS
+-->
+
+
+<!-- ============ STEP 2 — Firebase config ============
+     Open mtu-tracking.js and fill TRACKING_FIREBASE_CONFIG (top of file).
+     IMPORTANT: your current config has no "databaseURL". Create a
+     Realtime Database in the Firebase console (Build → Realtime Database)
+     and copy its URL into databaseURL. A separate named Firebase app is
+     used, so your existing Firestore setup is not touched.
+-->
+
+
+<!-- ============ STEP 3 — Trigger buttons (optional markup) ============
+     Example: add these next to an errand card / order screen.
+     The deliveryId should be unguessable (see security notes below).
+-->
+
+<!-- Courier: starts GPS sharing -->
+<button type="button" class="tap" id="btnStartDelivery"
+        onclick="MTUTracking.openCourierView('REQ-REPLACE-WITH-ID')">
+  🛵 Start delivery &amp; share location
+</button>
+
+<!-- Customer: watch the courier live -->
+<button type="button" class="tap" id="btnTrackDelivery"
+        onclick="MTUTracking.openCustomerView('REQ-REPLACE-WITH-ID')">
+  📍 Track my delivery
+</button>
+
+
+<!-- ============ STEP 3b — Wiring into your EXISTING errand feed ============
+     In app.js, renderErrandFeed() builds each card from the errand doc `e`.
+     The simplest integration (add one more delegated listener in a NEW file
+     or at the bottom of mtu-tracking.js, no change to existing code):
+
+     // After "Accept & Contact", the courier shares; the requester tracks.
+     // Use the Firestore errand id as the base of the deliveryId and add a
+     // secret so strangers can't guess it:
+     //   const deliveryId = "E" + errand.id + "_" + errand.trackKey;
+     // where `trackKey` = random 12-char string you store on the errand when
+     // it's created (e.g. crypto.randomUUID().replace(/-/g,'').slice(0,12)).
+
+     const isRequester = String(errand.userId) === String(currentUserId);
+     isRequester ? MTUTracking.openCustomerView(deliveryId)
+                 : MTUTracking.openCourierView(deliveryId);
+-->
+
+
+<!-- ============ STEP 4 — Realtime Database rules ============
+     Firebase console → Realtime Database → Rules. Starting point
+     (validates shape; you have no Firebase Auth, so see notes below):
+
+{
+  "rules": {
+    "deliveries": {
+      "$deliveryId": {
+        ".read": true,
+        "location": {
+          ".write": true,
+          ".validate": "newData.hasChildren(['lat','lng','timestamp']) &&
+                        newData.child('lat').isNumber() && newData.child('lat').val() >= -90  && newData.child('lat').val() <= 90 &&
+                        newData.child('lng').isNumber() && newData.child('lng').val() >= -180 && newData.child('lng').val() <= 180"
+        },
+        "status":      { ".write": true, ".validate": "newData.isString() && newData.val().length < 12" },
+        "destination": { ".write": true }
+      }
+    }
+  }
+}
+
+     SECURITY NOTES
+       • The app uses Telegram/device IDs, not Firebase Auth, so these rules
+         can't tell who is writing. Protection = an UNGUESSABLE deliveryId
+         (random key, 12+ chars). Never use a plain sequential ID.
+       • Location is personal data: it's only written while the courier's
+         sheet is open, and status flips to "stopped" when they close it.
+         Consider deleting deliveries/{id} when the errand is completed.
+       • For real protection, add Firebase Anonymous Auth or verify Telegram
+         initData in your Cloudflare Worker, then restrict writes to the
+         courier's uid.
+-->
+
+
+<!-- ============ NOTES ============
+  • GPS inside Telegram: works on most phones if location permission is
+    granted to Telegram. If the user denied it, the tracker shows the exact
+    fix ("enable location for Telegram in phone Settings").
+  • HTTPS is required for geolocation (your Mini App must be served over HTTPS).
+  • OpenStreetMap tile usage policy: fine for a campus-scale app. If traffic
+    grows, switch SETTINGS.tileUrl to a provider with an API key.
+  • The map sheet is created on demand and uses its own scoped CSS
+    (#mtuTrackModal), so it can't clash with your existing styles.
+  • Closing the sheet stops watchPosition and all database listeners.
+-->

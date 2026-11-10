@@ -5,7 +5,7 @@
   "compatibility_date": "2026-11-04",
   "observability": { "enabled": true },
   "vars": {
-   "ALLOWED_ORIGIN": "http://127.0.0.1:5500, http://127.0.0.1:5501",
+  "ALLOWED_ORIGIN": "*",
     "ADMIN_CHAT_ID": "-1003635976490",
     "FIREBASE_PROJECT_ID": "campus-app-fda0d",
     "ADMIN_USER_IDS": ""
