@@ -773,6 +773,8 @@
   }
 
 </style>
+<link rel="preconnect" href="https://tile.openstreetmap.org" crossorigin>
+<link rel="preconnect" href="https://unpkg.com" crossorigin>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 </head>
@@ -1326,6 +1328,15 @@
 <script src="app.js"></script>
 <script src="auth.js"></script>
 <script src="mtu-tracking.js"></script>
+<script src="mtu-shops.js"></script>
+<script src="mtu-shops-local.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    if (window.MTUShops) {
+      MTUShops.init(); // ያለ ምንም ዳታቤዝ ሱቆቹን በራሱ ਲੋድ አድርጎ ያሳያል
+    }
+  });
+</script>
 
 </body>
 </html>
